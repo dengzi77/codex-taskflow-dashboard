@@ -90,6 +90,7 @@
   let inlineAccountRefreshTimer = null;
   let inlineToastTimer = null;
   let draggedItemId = "";
+  let pendingScrollExcludedItemId = "";
   const inlineState = {
     threads: [],
     automations: [],
@@ -150,9 +151,11 @@
 
   function normalizeQueueSettings(value) {
     const intervalMinutes = Math.max(1, Math.min(1440, Math.round(Number(value?.intervalMinutes) || 5)));
+    const maxConcurrent = Math.max(1, Math.min(10, Math.round(Number(value?.maxConcurrent) || 5)));
     return {
       enabled: value?.enabled === true,
       intervalMinutes,
+      maxConcurrent,
       lastClaimAt: Number.isFinite(value?.lastClaimAt) ? value.lastClaimAt : 0,
       nextClaimAt: Number.isFinite(value?.nextClaimAt) ? value.nextClaimAt : 0,
     };
@@ -419,10 +422,13 @@
       @keyframes tf-spin { to { transform: rotate(360deg); } }
       #${FRAME_ID} .tf-modal-backdrop { position: absolute; inset: 0; z-index: 60; padding: 20px; display: grid; place-items: center; background: #18223066; backdrop-filter: blur(4px); }
       #${FRAME_ID} .tf-modal { width: min(490px,100%); max-height: calc(100% - 20px); overflow: auto; border: 1px solid #e4e8ed; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px #10182830; }
+      #${FRAME_ID} .tf-result-modal { height: min(560px, calc(100% - 20px)); display: flex; flex-direction: column; overflow: hidden; }
       #${FRAME_ID} .tf-modal-head { padding: 20px 21px 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; border-bottom: 1px solid #edf0f3; }
       #${FRAME_ID} .tf-modal-head h2 { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 17px; } #${FRAME_ID} .tf-kicker { margin: 0; color: #6578e3; font-size: 9px; font-weight: 800; text-transform: uppercase; }
       #${FRAME_ID} .tf-close { width: 31px; height: 31px; flex: 0 0 auto; border: 0; border-radius: 8px; color: #77808e; background: #f2f4f7; }
       #${FRAME_ID} .tf-modal-body { padding: 18px 21px; color: #657080; } #${FRAME_ID} .tf-modal-body p { overflow-wrap: anywhere; white-space: pre-wrap; }
+      #${FRAME_ID} .tf-result-modal .tf-modal-head, #${FRAME_ID} .tf-result-modal .tf-modal-actions { flex: 0 0 auto; }
+      #${FRAME_ID} .tf-result-modal .tf-modal-body { min-height: 0; flex: 1; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
       #${FRAME_ID} .tf-modal-actions { padding: 0 21px 20px; display: flex; justify-content: flex-end; gap: 8px; }
       #${FRAME_ID} .tf-field { margin: 16px 21px 0; display: grid; gap: 7px; color: #515b69; font-size: 10px; font-weight: 700; }
       #${FRAME_ID} .tf-field input, #${FRAME_ID} .tf-field select, #${FRAME_ID} .tf-field textarea { width: 100%; min-width: 0; padding: 9px 10px; outline: 0; color: #344054; border: 1px solid #dfe3e9; border-radius: 8px; background: #fff; }
@@ -1005,7 +1011,7 @@
   function resultModalHtml(item) {
     if (!item) return "";
     const queued = Boolean(item.queueId);
-    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true">
+    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal tf-result-modal" role="dialog" aria-modal="true">
       <div class="tf-modal-head"><div><p class="tf-kicker">${escapeHtml(item.kind)}</p><h2>${escapeHtml(item.title)}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p>${escapeHtml(item.result)}</p></div>
       <div class="tf-modal-actions">${queued ? `<button class="tf-secondary" data-action="queue-delete" data-id="${escapeHtml(item.queueId)}">移除</button>` : ""}<button class="tf-secondary" data-action="close-modal">关闭</button>${queued ? `<button class="tf-primary" data-action="queue-start" data-id="${escapeHtml(item.queueId)}">立即执行</button>` : `<button class="tf-secondary" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">打开对话</button>`}${item.status === "review" ? `<button class="tf-primary" data-action="mark-done" data-id="${escapeHtml(item.id)}">确认并完成</button>` : ""}</div>
@@ -1041,9 +1047,10 @@
       : "未计划";
     return `<div class="tf-modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true">
       <div class="tf-modal-head"><div><p class="tf-kicker">Taskflow</p><h2>看板配置</h2></div><button class="tf-close" data-action="close-modal">${taskflowIcon("close")}</button></div>
-      <div class="tf-setting-row"><div><strong>自动认领待处理</strong><p>按间隔逐个创建真实 Codex 对话并开始执行；有任务运行时会等待。</p></div><button class="tf-switch ${queueSettings.enabled ? "on" : ""}" data-action="toggle-auto" aria-pressed="${queueSettings.enabled}"></button></div>
+      <div class="tf-setting-row"><div><strong>自动认领待处理</strong><p>按间隔逐个创建真实 Codex 对话；达到同时处理上限后等待。</p></div><button class="tf-switch ${queueSettings.enabled ? "on" : ""}" data-action="toggle-auto" aria-pressed="${queueSettings.enabled}"></button></div>
       <label class="tf-field">认领间隔（分钟）<input id="tf-interval" type="number" min="1" max="1440" value="${queueSettings.intervalMinutes}"><small>当前 ${queueItems.length} 项待处理 · 下次认领：${escapeHtml(next)}</small></label>
-      <div class="tf-modal-actions"><button class="tf-secondary" data-action="claim-next" ${queueItems.length ? "" : "disabled"}>立即认领下一项</button><button class="tf-primary" data-action="save-interval">保存间隔</button></div>
+      <label class="tf-field">同时处理任务数<input id="tf-concurrency" type="number" min="1" max="10" value="${queueSettings.maxConcurrent}"><small>自动认领最多允许 1–10 个任务同时处于“正在处理”，默认 5。</small></label>
+      <div class="tf-modal-actions"><button class="tf-secondary" data-action="claim-next" ${queueItems.length ? "" : "disabled"}>立即认领下一项</button><button class="tf-primary" data-action="save-queue-settings">保存设置</button></div>
       <div class="tf-modal-body">“确认完成”只保存在这台设备，不会暂停、删除或修改自动化计划。</div>
     </section></div>`;
   }
@@ -1060,8 +1067,48 @@
     return `<section class="tf-automation"><div class="tf-automation-head"><div><strong>计划任务</strong><div class="tf-meta">当前 Codex 已创建的自动化计划</div></div><button class="tf-secondary" data-action="open-scheduled">${taskflowIcon("arrow")} 前往「已安排」</button></div><div class="tf-automation-list">${content}</div></section>`;
   }
 
+  function captureInlineScroll(excludedItemId = "") {
+    if (!frame) return null;
+    const board = frame.querySelector(".tf-board");
+    const columns = {};
+    frame.querySelectorAll(".tf-column[data-status]").forEach((column) => {
+      const list = column.querySelector(".tf-card-list");
+      if (!list) return;
+      const listRect = list.getBoundingClientRect();
+      const cards = Array.from(list.querySelectorAll("[data-item-id]"));
+      const anchor = cards.find((card) => card.dataset.itemId !== excludedItemId
+        && card.getBoundingClientRect().bottom > listRect.top);
+      columns[column.dataset.status] = {
+        scrollTop: list.scrollTop,
+        anchorId: anchor?.dataset.itemId || "",
+        anchorOffset: anchor ? anchor.getBoundingClientRect().top - listRect.top : 0,
+      };
+    });
+    return { boardLeft: board?.scrollLeft || 0, columns };
+  }
+
+  function restoreInlineScroll(snapshot) {
+    if (!snapshot || !frame) return;
+    const board = frame.querySelector(".tf-board");
+    if (board) board.scrollLeft = snapshot.boardLeft;
+    Object.entries(snapshot.columns).forEach(([statusKey, position]) => {
+      const list = frame.querySelector(`.tf-column[data-status="${statusKey}"] .tf-card-list`);
+      if (!list) return;
+      list.scrollTop = position.scrollTop;
+      if (!position.anchorId) return;
+      const anchor = Array.from(list.querySelectorAll("[data-item-id]"))
+        .find((card) => card.dataset.itemId === position.anchorId);
+      if (!anchor) return;
+      list.scrollTop += anchor.getBoundingClientRect().top
+        - list.getBoundingClientRect().top
+        - position.anchorOffset;
+    });
+  }
+
   function renderInlineBoard() {
     if (!frame?.isConnected || frame.dataset.renderMode !== "native") return;
+    const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
+    pendingScrollExcludedItemId = "";
     const items = inlineItems();
     const keyword = inlineState.query.trim().toLowerCase();
     const visible = items.filter((item) => (
@@ -1099,6 +1146,7 @@
     const noticePanel = inlineState.showNotices ? `<section class="tf-notice"><div class="tf-notice-head"><strong>待验收提醒</strong><button class="tf-mini" data-action="mark-read" ${unread ? "" : "disabled"}>${unread ? "全部已读" : "已全部读"}</button></div><div class="tf-notice-list">${notices.length ? notices.map((item) => `<button class="tf-notice-item" data-action="select-item" data-id="${escapeHtml(item.id)}"><span>“${escapeHtml(item.title)}”已停止运行，等待你验收</span><small>${escapeHtml(relativeTime(item.updatedAt))}</small></button>`).join("") : '<div class="tf-empty">暂无待验收任务</div>'}</div></section>` : "";
     const loadingOverlay = inlineState.refreshing ? `<div class="tf-loading-overlay" role="status" aria-live="polite"><div class="tf-loading-content"><span class="tf-spinner"></span><strong>正在刷新数据</strong><small>正在同步任务、自动化、额度和待处理队列…</small></div></div>` : "";
     frame.innerHTML = `<div class="tf-shell"><header class="tf-topbar"><div class="tf-top-left">${inlineState.hostContext?.sidebarCollapsed ? `<button class="tf-expand" data-action="expand-sidebar">${taskflowIcon("menu")} 展开侧边栏</button>` : ""}<nav class="tf-tabs" aria-label="内容类型">${tabs}</nav></div><div class="tf-actions"><label class="tf-search">${taskflowIcon("search")}<input data-role="search" value="${escapeHtml(inlineState.query)}" placeholder="${inlineState.view === "automations" ? "搜索自动化" : "搜索任务或聊天"}">${inlineState.query ? `<button data-action="clear-search">${taskflowIcon("close")}</button>` : ""}</label><button class="tf-secondary" data-action="new-thread">${taskflowIcon("plus")} 立即新建</button><button class="tf-secondary tf-refresh-button ${inlineState.refreshing ? "loading" : ""}" data-action="refresh-data" title="刷新任务、自动化、额度和待处理队列" ${inlineState.refreshing ? "disabled" : ""}>${taskflowIcon("refresh")} ${inlineState.refreshing ? "刷新中" : "刷新数据"}</button><button class="tf-icon-button" data-action="toggle-notices" aria-label="通知">${taskflowIcon("bell")}${unread ? `<span class="tf-badge">${Math.min(unread, 99)}</span>` : ""}</button><div class="tf-account"><div class="tf-account-chip" title="${escapeHtml(`${accountName} · ${quota.quota}${quota.reset ? ` · ${quota.reset}` : ""}`)}"><span class="tf-avatar">${escapeHtml(accountName.slice(0, 1).toUpperCase())}</span><span class="tf-account-copy"><small>${escapeHtml(`${quota.plan} · ${quota.quota}`)}</small>${quota.reset ? `<small>${escapeHtml(quota.reset)}</small>` : ""}</span></div><button class="tf-icon-button" data-action="show-settings" aria-label="看板配置">${taskflowIcon("settings")}</button></div></div></header>${summary}${inlineState.error ? `<div class="tf-message error">${taskflowIcon("warning")} ${escapeHtml(inlineState.error)} <button class="tf-mini" data-action="refresh-data">重新连接</button></div>` : inlineState.loading ? `<div class="tf-message">${taskflowIcon("refresh")} 正在读取当前账号的 Codex 任务…</div>` : ""}${board}</div>${noticePanel}${selected ? resultModalHtml(selected) : ""}${selectedAutomation ? automationModalHtml(selectedAutomation) : ""}${inlineState.showCreate ? createModalHtml() : ""}${inlineState.showSettings ? settingsModalHtml() : ""}${loadingOverlay}${inlineState.toast ? `<div class="tf-toast">${taskflowIcon("check")} ${escapeHtml(inlineState.toast)}</div>` : ""}`;
+    restoreInlineScroll(scrollSnapshot);
   }
 
   function handleInlineBoardMessage(message) {
@@ -1553,6 +1601,9 @@
     if (payload?.intervalMinutes !== undefined) {
       queueSettings.intervalMinutes = Math.max(1, Math.min(1440, Math.round(Number(payload.intervalMinutes) || 5)));
     }
+    if (payload?.maxConcurrent !== undefined) {
+      queueSettings.maxConcurrent = Math.max(1, Math.min(10, Math.round(Number(payload.maxConcurrent) || 5)));
+    }
     if (!queueSettings.enabled) {
       queueSettings.nextClaimAt = 0;
     } else if (!wasEnabled || payload?.intervalMinutes !== undefined || !queueSettings.nextClaimAt) {
@@ -1577,7 +1628,8 @@
     try {
       if (!options.ignoreActive) {
         const threads = await listCodexThreads();
-        if (threads.some((thread) => thread?.status?.type === "active")) {
+        const activeCount = threads.filter((thread) => thread?.status?.type === "active").length;
+        if (activeCount >= queueSettings.maxConcurrent) {
           item.status = "queued";
           persistQueue();
           return false;
@@ -1829,6 +1881,14 @@
     renderInlineBoard();
   }
 
+  function completeReviewItem(id) {
+    pendingScrollExcludedItemId = id;
+    inlineState.acceptedIds.add(id);
+    persistAcceptedIds();
+    inlineState.selectedId = "";
+    showInlineToast("已确认验收并移入已完成");
+  }
+
   function onInlineClick(event) {
     const target = event.target?.closest?.("[data-action]");
     const clickedInsideNotice = Boolean(event.target?.closest?.(".tf-notice"));
@@ -1864,10 +1924,7 @@
       renderInlineBoard();
     } else if (action === "open-thread") void openThread(id);
     else if (action === "mark-done") {
-      inlineState.acceptedIds.add(id);
-      persistAcceptedIds();
-      inlineState.selectedId = "";
-      showInlineToast("已确认验收并移入已完成");
+      completeReviewItem(id);
     } else if (action === "queue-start") {
       void claimQueueItem(id, { ignoreActive: true });
       closeInlineModal();
@@ -1883,10 +1940,11 @@
     else if (action === "new-thread") openNewCodexThread();
     else if (action === "expand-sidebar") expandNativeSidebar();
     else if (action === "toggle-auto") updateQueueSettings({ enabled: !queueSettings.enabled });
-    else if (action === "save-interval") {
+    else if (action === "save-queue-settings") {
       const minutes = frame.querySelector("#tf-interval")?.value;
-      updateQueueSettings({ intervalMinutes: minutes });
-      showInlineToast("自动认领间隔已保存");
+      const maxConcurrent = frame.querySelector("#tf-concurrency")?.value;
+      updateQueueSettings({ intervalMinutes: minutes, maxConcurrent });
+      showInlineToast("自动认领设置已保存");
     } else if (action === "claim-next") {
       void claimQueueItem(null, { ignoreActive: false });
       showInlineToast("正在认领下一项待处理任务");
@@ -1969,8 +2027,7 @@
       showInlineToast("正在创建 Codex 对话并开始执行");
     } else if (item.queueId) showInlineToast("待处理任务可拖到“正在处理”立即执行");
     else if (item.status === "review" && target === "done") {
-      inlineState.selectedId = item.id;
-      showInlineToast("请先查看结果，再确认验收");
+      completeReviewItem(item.id);
     } else if (item.status === "done" && target === "review") {
       inlineState.acceptedIds.delete(item.id);
       persistAcceptedIds();

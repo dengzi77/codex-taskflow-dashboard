@@ -141,7 +141,7 @@
 
   <rect x="434" y="625" width="328" height="202" rx="16" fill="#F7F8FC" stroke="#D5DBEA" stroke-dasharray="6 6"/>
   <circle cx="598" cy="701" r="24" fill="#E8ECF7"/><text x="598" y="708" text-anchor="middle" fill="#95A2B5" font-size="22">✓</text>
-  <text x="598" y="748" text-anchor="middle" class="muted small">同一时间仅执行一项任务</text>
+  <text x="598" y="748" text-anchor="middle" class="muted small">自动认领并发数可设置为 1–10</text>
 
   <!-- review cards -->
   <g filter="url(#shadow)"><rect x="810" y="380" width="328" height="188" rx="16" fill="white" stroke="#F0D18D"/></g>
