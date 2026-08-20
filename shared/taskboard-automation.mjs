@@ -1,0 +1,182 @@
+import path from "node:path";
+import { isSupportedModelEffort } from "./taskboard-automation-options.mjs";
+
+const AUTOMATION_OPERATIONS = new Set(["ensure-active", "pause", "list", "apply-policy"]);
+const INTERVAL_MINUTES = new Set([5, 10, 15, 30, 60]);
+const HOST_REQUEST_FIELDS = new Set([
+  "id",
+  "action",
+  "requestId",
+  "operation",
+  "taskboardProjectId",
+  "codexProjectId",
+  "projectName",
+  "workspacePath",
+  "skillPath",
+  "automationId",
+  "enabledByUser",
+  "quotaAware",
+  "intervalMinutes",
+  "model",
+  "reasoningEffort",
+]);
+
+export function parseTaskboardAutomationHostRequest(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (Object.keys(value).some((field) => !HOST_REQUEST_FIELDS.has(field))) return null;
+  if (value.action !== "automation") return null;
+  if (!validIdentifier(value.id, 80) || !validIdentifier(value.requestId, 100)) return null;
+  if (!AUTOMATION_OPERATIONS.has(value.operation)) return null;
+  if (!validProjectId(value.taskboardProjectId)) return null;
+  if (!validText(value.codexProjectId, 256) || !validText(value.projectName, 200)) return null;
+  if (!validAbsolutePath(value.workspacePath) || !validAbsolutePath(value.skillPath)) return null;
+  if (!INTERVAL_MINUTES.has(value.intervalMinutes)) return null;
+  if (!isSupportedModelEffort(value.model, value.reasoningEffort)) return null;
+  if (value.automationId !== undefined && !validText(value.automationId, 256)) return null;
+  if (typeof value.enabledByUser !== "boolean" || typeof value.quotaAware !== "boolean") return null;
+
+  return {
+    id: value.id,
+    action: "automation",
+    requestId: value.requestId,
+    operation: value.operation,
+    taskboardProjectId: value.taskboardProjectId,
+    codexProjectId: value.codexProjectId,
+    projectName: value.projectName,
+    workspacePath: value.workspacePath,
+    skillPath: value.skillPath,
+    ...(value.automationId === undefined ? {} : { automationId: value.automationId }),
+    enabledByUser: value.enabledByUser,
+    quotaAware: value.quotaAware,
+    intervalMinutes: value.intervalMinutes,
+    model: value.model,
+    reasoningEffort: value.reasoningEffort,
+  };
+}
+
+export function buildTaskboardAutomationName(request) {
+  return `Taskboard 自动认领 · ${request.taskboardProjectId}`;
+}
+
+export function buildTaskboardAutomationPrompt(request) {
+  const task = request.taskIdentifier
+    ? `处理已认领任务 ${request.taskIdentifier}${request.taskId ? `（${request.taskId}）` : ""}`
+    : `在项目 ${request.taskboardProjectId} 中认领并处理一个 todo`;
+  return [
+    `[$manage-taskboard](${request.skillPath}) ${task}，工作目录：${request.workspacePath}。`,
+    "读取议题和评论；仅在状态有效时直接实现并验证。",
+    "完成后添加简短结果评论，并用最新 version 移到 in_review；本轮随后结束。",
+  ].join("\n");
+}
+
+export function buildTaskboardAutomationSpec(request) {
+  return {
+    kind: "cron",
+    name: buildTaskboardAutomationName(request),
+    prompt: buildTaskboardAutomationPrompt(request),
+    projectId: request.codexProjectId,
+    executionEnvironment: "local",
+    localEnvironmentConfigPath: null,
+    model: request.model,
+    reasoningEffort: request.reasoningEffort,
+    rrule: `RRULE:FREQ=MINUTELY;INTERVAL=${request.intervalMinutes}`,
+  };
+}
+
+export async function reconcileTaskboardAutomation(request, rpc) {
+  const listed = await rpc("list-automations", {});
+  const items = Array.isArray(listed?.items) ? listed.items : [];
+  const name = buildTaskboardAutomationName(request);
+  const matchingItems = items.filter((item) => item?.name === name);
+
+  if (request.operation === "list") {
+    return { items: matchingItems.map(sanitizeAutomation).filter(Boolean) };
+  }
+
+  const existing = (
+    request.automationId
+      ? matchingItems.find((item) => item?.id === request.automationId)
+      : null
+  ) ?? matchingItems[0];
+  const spec = buildTaskboardAutomationSpec(request);
+
+  if (request.operation === "pause") {
+    if (!existing) return { error: "not-found" };
+    if (automationMatchesSpec(existing, spec, "PAUSED")) return { item: existing };
+    return rpc("automation-update", { ...spec, id: existing.id, status: "PAUSED" });
+  }
+
+  if (request.operation !== "ensure-active") {
+    throw new Error(`Unsupported automation operation: ${request.operation}`);
+  }
+  if (existing) {
+    if (automationMatchesSpec(existing, spec, "ACTIVE")) return { item: existing };
+    return rpc("automation-update", {
+      ...spec,
+      id: existing.id,
+      status: "ACTIVE",
+    });
+  }
+  return rpc("automation-create", spec);
+}
+
+function sanitizeAutomation(item) {
+  if (
+    !validText(item?.id, 256)
+    || (item.status !== "ACTIVE" && item.status !== "PAUSED")
+    || !isSupportedModelEffort(item.model, item.reasoningEffort)
+    || !validRrule(item.rrule)
+  ) return null;
+  return {
+    id: item.id,
+    status: item.status,
+    model: item.model,
+    reasoningEffort: item.reasoningEffort,
+    rrule: item.rrule,
+    ...(
+      item.nextRunAt === null || Number.isFinite(item.nextRunAt)
+        ? { nextRunAt: item.nextRunAt }
+        : {}
+    ),
+  };
+}
+
+function validRrule(value) {
+  return typeof value === "string"
+    && /^RRULE:FREQ=MINUTELY;INTERVAL=(5|10|15|30|60)$/.test(value);
+}
+
+function automationMatchesSpec(item, spec, status) {
+  return item?.status === status
+    && Object.entries(spec).every(([field, value]) => (
+      field === "projectId"
+        ? (item.projectId ?? item.target?.projectId) === value
+        : item[field] === value
+    ));
+}
+
+function validIdentifier(value, maxLength) {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= maxLength
+    && /^[a-z0-9-]+$/i.test(value);
+}
+
+function validProjectId(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= 128
+    && /^[a-z0-9._-]+$/i.test(value);
+}
+
+function validText(value, maxLength) {
+  return typeof value === "string"
+    && value.trim() === value
+    && value.length > 0
+    && value.length <= maxLength
+    && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+function validAbsolutePath(value) {
+  return validText(value, 2_048) && path.isAbsolute(value);
+}

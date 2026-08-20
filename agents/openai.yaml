@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex One Person Board"
+  short_description: "Install and start the personal Codex taskboard"
+  default_prompt: "Use $codex-taskflow-dashboard to install and start this project."

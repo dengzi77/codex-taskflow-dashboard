@@ -1,0 +1,78 @@
+{
+  "name": "codex-taskflow-dashboard",
+  "version": "1.0.0",
+  "description": "A native task, chat, and automation Kanban dashboard for the Codex desktop sidebar.",
+  "private": false,
+  "license": "MIT",
+  "author": "dengzi77",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dengzi77/codex-taskflow-dashboard.git"
+  },
+  "homepage": "https://github.com/dengzi77/codex-taskflow-dashboard#readme",
+  "bugs": {
+    "url": "https://github.com/dengzi77/codex-taskflow-dashboard/issues"
+  },
+  "keywords": [
+    "codex",
+    "taskboard",
+    "kanban",
+    "automation",
+    "desktop"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "bin": {
+    "taskctl": "./cli/taskctl.mjs"
+  },
+  "scripts": {
+    "codex": "node scripts/codex-injector.mjs --launch --watch --open",
+    "codex:inject": "node scripts/codex-injector.mjs --watch",
+    "codex:daemon": "node scripts/codex-injector.mjs --daemon --open",
+    "codex:install-launcher": "node scripts/install-codex-launcher.mjs",
+    "codex:uninstall-launcher": "node scripts/install-codex-launcher.mjs --uninstall",
+    "codex:refresh": "node scripts/codex-injector.mjs --refresh",
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "node --watch server/index.mjs --dev",
+    "dev:web": "vite --config web/vite.config.ts",
+    "dev:cloud": "npm run build:web && wrangler dev --local",
+    "build": "vite build --config web/vite.config.ts && node scripts/codex-injector.mjs --refresh-if-running",
+    "build:web": "vite build --config web/vite.config.ts",
+    "typecheck": "tsc -p web/tsconfig.json --noEmit",
+    "start": "node scripts/update-supervisor.mjs",
+    "start:server": "node server/index.mjs",
+    "taskctl": "node cli/taskctl.mjs",
+    "taskctl:install": "node scripts/install-taskctl.mjs",
+    "test": "node --test test/actor-identity.test.mjs test/ai-chat-state.test.mjs test/board-views.test.mjs test/cli.test.mjs test/cloud-revision-polling.test.mjs test/icon-system.test.mjs test/injector-host-runtime.test.mjs test/injector.test.mjs test/public-release.test.mjs test/taskboard-automation.test.mjs",
+    "test:all": "node --test",
+    "test:cloud": "node --test test/cloud-shared-worker.test.mjs",
+    "cloud:migrate:local": "wrangler d1 migrations apply codex-taskboard-db --local",
+    "cloud:migrate": "wrangler d1 migrations apply codex-taskboard-db --remote",
+    "cloud:deploy:dry-run": "npm run build:web && wrangler deploy --dry-run",
+    "cloud:deploy": "npm run build:web && wrangler deploy",
+    "cloud:data": "node scripts/migrate-to-cloud.mjs",
+    "check": "npm run typecheck && npm run build && npm test",
+    "release:check": "npm run typecheck && npm run build:web && npm test"
+  },
+  "dependencies": {
+    "@lobehub/icons-static-svg": "^1.94.0",
+    "@mdxeditor/editor": "^4.2.0",
+    "@xyflow/react": "^12.11.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "miniflare": "^4.20260722.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "wrangler": "^4.114.0"
+  }
+}
