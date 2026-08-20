@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "taskflow-1.5.2";
+  const VERSION = "taskflow-1.5.3";
   const SOURCE_HASH = window.__CODEX_TASKBOARD_SOURCE_HASH__;
   const SENTINEL_KEY = "__codexTaskboardInjection__";
   const DEFAULT_TASKBOARD_URL = "http://127.0.0.1:47823/?host=codex";
@@ -105,6 +105,8 @@
     query: "",
     view: "all",
     selectedId: "",
+    selectedResult: "",
+    selectedResultLoading: false,
     selectedAutomationId: "",
     showNotices: false,
     showSettings: false,
@@ -1040,6 +1042,41 @@
     return [...queued, ...threads];
   }
 
+  function lastCodexReply(thread) {
+    const replies = (Array.isArray(thread?.turns) ? thread.turns : [])
+      .flatMap((turn) => (Array.isArray(turn?.items) ? turn.items : []))
+      .filter((item) => item?.type === "agentMessage" && typeof item.text === "string" && item.text.trim());
+    return replies.findLast((item) => item.phase === "final_answer")?.text.trim()
+      || replies.at(-1)?.text.trim()
+      || "该任务没有可用的 Codex 回复，请打开对话查看完整记录。";
+  }
+
+  async function openInlineResult(id) {
+    const item = inlineItems().find((entry) => entry.id === id);
+    inlineState.selectedId = id;
+    inlineState.selectedResult = item?.queueId ? item.result : "";
+    inlineState.selectedResultLoading = Boolean(item?.threadId && !item.queueId);
+    inlineState.showNotices = false;
+    inlineState.modalFocusPending = true;
+    renderInlineBoard();
+    if (!inlineState.selectedResultLoading) return;
+    try {
+      const response = await requestCodexAppServer("thread/read", {
+        threadId: item.threadId,
+        includeTurns: true,
+      });
+      if (inlineState.selectedId !== id) return;
+      inlineState.selectedResult = lastCodexReply(response?.thread);
+    } catch {
+      if (inlineState.selectedId !== id) return;
+      inlineState.selectedResult = "暂时无法读取最后一次回复，请打开对话查看完整记录。";
+    } finally {
+      if (inlineState.selectedId !== id) return;
+      inlineState.selectedResultLoading = false;
+      renderInlineBoard();
+    }
+  }
+
   function showInlineToast(message) {
     inlineState.toast = message;
     if (inlineToastTimer !== null) window.clearTimeout(inlineToastTimer);
@@ -1291,7 +1328,13 @@
     const notices = retainedItems.filter((item) => item.status === "review").slice(0, 20);
     const quota = rateLimitSummary(inlineState.rateLimits);
     const accountName = inlineState.hostContext?.user?.name || "当前账号";
-    const selected = items.find((item) => item.id === inlineState.selectedId);
+    const selectedItem = items.find((item) => item.id === inlineState.selectedId);
+    const selected = selectedItem ? {
+      ...selectedItem,
+      result: inlineState.selectedResultLoading
+        ? "正在读取最后一次回复…"
+        : inlineState.selectedResult || selectedItem.result,
+    } : null;
     const selectedAutomation = inlineState.automations.find((item) => item.id === inlineState.selectedAutomationId);
     const tabs = [["all", "全部", ""], ["chats", "聊天", "chat"], ["tasks", "任务", "task"], ["automations", "自动化", "clock"]]
       .map(([key, label, icon]) => `<button role="tab" aria-selected="${inlineState.view === key}" data-action="view" data-view="${key}" class="${inlineState.view === key ? "active" : ""}">${icon ? taskflowIcon(icon) : ""}${label}</button>`).join("");
@@ -2067,6 +2110,8 @@
 
   function closeInlineModal() {
     inlineState.selectedId = "";
+    inlineState.selectedResult = "";
+    inlineState.selectedResultLoading = false;
     inlineState.selectedAutomationId = "";
     inlineState.showCreate = false;
     inlineState.showSettings = false;
@@ -2079,6 +2124,8 @@
     inlineState.acceptedIds.add(id);
     persistAcceptedIds();
     inlineState.selectedId = "";
+    inlineState.selectedResult = "";
+    inlineState.selectedResultLoading = false;
     showInlineToast("已确认验收并移入已完成");
   }
 
@@ -2113,10 +2160,7 @@
     } else if (action === "close-modal") closeInlineModal();
     else if (action === "modal-backdrop" && event.target === target) closeInlineModal();
     else if (action === "select-item") {
-      inlineState.selectedId = id;
-      inlineState.showNotices = false;
-      inlineState.modalFocusPending = true;
-      renderInlineBoard();
+      void openInlineResult(id);
     } else if (action === "open-thread") void openThread(id);
     else if (action === "mark-done") {
       completeReviewItem(id);
