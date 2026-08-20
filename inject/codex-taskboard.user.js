@@ -124,6 +124,14 @@
     projectLoading: false,
     projectLoadError: "",
     modalFocusPending: false,
+    createDraft: {
+      kind: "聊天",
+      title: "",
+      priority: "normal",
+      prompt: "",
+      workspaceMode: "",
+      projectId: "",
+    },
   };
 
   function readStoredJson(key, fallback) {
@@ -1206,6 +1214,14 @@
   }
 
   async function openCreateModal() {
+    inlineState.createDraft = {
+      kind: "聊天",
+      title: "",
+      priority: "normal",
+      prompt: "",
+      workspaceMode: "",
+      projectId: "",
+    };
     inlineState.showCreate = true;
     inlineState.projectLoading = true;
     inlineState.projectLoadError = "";
@@ -1238,18 +1254,23 @@
       ? inlineState.hostContext.projectId
       : projects[0]?.id || "";
     const hasProjects = projects.length > 0;
+    const draft = inlineState.createDraft;
+    const workspaceMode = draft.workspaceMode === "none" || !hasProjects ? "none" : "project";
+    const projectId = projects.some((project) => project.id === draft.projectId)
+      ? draft.projectId
+      : defaultProjectId;
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><form class="tf-modal" data-form="queue-create" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
       <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2 id="tf-create-title">加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <div class="tf-modal-scroll">
-        <label class="tf-field">类型<select name="kind"><option value="聊天">聊天</option><option value="任务">任务</option></select></label>
-        <label class="tf-field">名称<input name="title" required autofocus placeholder="例如：整理本周产品需求"></label>
-        <label class="tf-field">优先级<select name="priority"><option value="high">高优先级</option><option value="normal" selected>普通</option><option value="low">低优先级</option></select></label>
-        <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情"></textarea></label>
+        <label class="tf-field">类型<select name="kind"><option value="聊天" ${draft.kind === "任务" ? "" : "selected"}>聊天</option><option value="任务" ${draft.kind === "任务" ? "selected" : ""}>任务</option></select></label>
+        <label class="tf-field">名称<input name="title" required autofocus value="${escapeHtml(draft.title)}" placeholder="例如：整理本周产品需求"></label>
+        <label class="tf-field">优先级<select name="priority"><option value="high" ${draft.priority === "high" ? "selected" : ""}>高优先级</option><option value="normal" ${draft.priority === "normal" ? "selected" : ""}>普通</option><option value="low" ${draft.priority === "low" ? "selected" : ""}>低优先级</option></select></label>
+        <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情">${escapeHtml(draft.prompt)}</textarea></label>
         <fieldset class="tf-choice-group"><legend>在哪里处理</legend>
-          <label class="tf-choice"><input type="radio" name="workspaceMode" value="project" ${hasProjects ? "checked" : "disabled"}><span class="tf-choice-copy"><strong>在项目中处理</strong><small>使用所选 Codex 项目的文件和上下文</small></span></label>
-          <label class="tf-choice"><input type="radio" name="workspaceMode" value="none" ${hasProjects ? "" : "checked"}><span class="tf-choice-copy"><strong>不需要项目</strong><small>适合翻译、总结、写作等通用任务</small></span></label>
+          <label class="tf-choice"><input type="radio" name="workspaceMode" value="project" ${workspaceMode === "project" ? "checked" : ""} ${hasProjects ? "" : "disabled"}><span class="tf-choice-copy"><strong>在项目中处理</strong><small>使用所选 Codex 项目的文件和上下文</small></span></label>
+          <label class="tf-choice"><input type="radio" name="workspaceMode" value="none" ${workspaceMode === "none" ? "checked" : ""}><span class="tf-choice-copy"><strong>不需要项目</strong><small>适合翻译、总结、写作等通用任务</small></span></label>
         </fieldset>
-        <label class="tf-field tf-project-select" ${hasProjects ? "" : "hidden"}>选择项目<select name="projectId" ${hasProjects ? "required" : "disabled"}>${projects.map((project) => `<option value="${escapeHtml(project.id)}" ${project.id === defaultProjectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`).join("")}</select><small>只显示项目名称，不需要选择目录。</small></label>
+        <label class="tf-field tf-project-select" ${workspaceMode === "project" ? "" : "hidden"}>选择项目<select name="projectId" ${workspaceMode === "project" ? "required" : "disabled"}>${projects.map((project) => `<option value="${escapeHtml(project.id)}" ${project.id === projectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`).join("")}</select><small>只显示项目名称，不需要选择目录。</small></label>
         ${inlineState.projectLoadError ? `<div class="tf-modal-body" role="status">项目暂不可用（${escapeHtml(inlineState.projectLoadError)}），仍可选择“不需要项目”。</div>` : ""}
         <div class="tf-modal-body">保存后会停留在“待处理”；到达设置的间隔后，Codex 会创建真实对话并提交这段内容。</div>
       </div>
@@ -1325,6 +1346,18 @@
 
   function renderInlineBoard() {
     if (!frame?.isConnected || frame.dataset.renderMode !== "native") return;
+    const createForm = frame.querySelector('[data-form="queue-create"]');
+    if (createForm) {
+      const draftData = new FormData(createForm);
+      inlineState.createDraft = {
+        kind: draftData.get("kind") === "任务" ? "任务" : "聊天",
+        title: String(draftData.get("title") || ""),
+        priority: normalizePriority(draftData.get("priority")),
+        prompt: String(draftData.get("prompt") || ""),
+        workspaceMode: draftData.get("workspaceMode") === "none" ? "none" : "project",
+        projectId: String(draftData.get("projectId") || ""),
+      };
+    }
     const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
     const activeModalControl = frame.querySelector(".tf-modal")?.contains(document.activeElement)
       ? {
@@ -2263,6 +2296,16 @@
       }
       return;
     }
+    const createForm = event.target?.closest?.('[data-form="queue-create"]');
+    if (event.key === "Enter" && createForm) {
+      event.stopPropagation();
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.target?.tagName === "TEXTAREA") return;
+      if (event.target?.closest?.('button[type="submit"]')) return;
+      event.preventDefault();
+      if (createForm.reportValidity()) createForm.requestSubmit();
+      return;
+    }
     if (event.key !== "Tab" || !modal) return;
     const focusable = Array.from(modal.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'))
       .filter((element) => element.getClientRects().length > 0);
@@ -2298,6 +2341,14 @@
     };
     if (!payload.title || !payload.prompt || (payload.workspaceMode === "project" && !payload.cwd)) return;
     addQueueItem(payload);
+    inlineState.createDraft = {
+      kind: "聊天",
+      title: "",
+      priority: "normal",
+      prompt: "",
+      workspaceMode: "",
+      projectId: "",
+    };
     inlineState.showCreate = false;
     showInlineToast("已加入待处理队列");
   }
