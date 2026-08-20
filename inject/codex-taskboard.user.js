@@ -28,9 +28,11 @@
   const QUEUE_STORAGE_KEY = "taskflow.codex-queue.v1";
   const QUEUE_SETTINGS_KEY = "taskflow.codex-queue-settings.v1";
   const ACCEPTED_STORAGE_KEY = "taskflow.accepted-thread-ids.v1";
+  const THREAD_PRIORITIES_STORAGE_KEY = "taskflow.thread-priorities.v1";
   const NOTICE_READ_STORAGE_KEY = "taskflow.notice-read-at.v1";
   const VIEW_STORAGE_KEY = "taskflow.last-view.v1";
   const QUEUE_TICK_MS = 5_000;
+  const COMPLETED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
   const PLUGIN_LABELS = ["插件", "plugins"];
   const NATIVE_PAGE_LABELS = [
     "新建任务",
@@ -127,6 +129,10 @@
     }
   }
 
+  function normalizePriority(value) {
+    return ["high", "normal", "low"].includes(value) ? value : "normal";
+  }
+
   function normalizeQueueItems(value) {
     if (!Array.isArray(value)) return [];
     return value.flatMap((item) => {
@@ -141,6 +147,7 @@
         title,
         prompt,
         cwd,
+        priority: normalizePriority(item.priority),
         createdAt: Number.isFinite(item.createdAt) ? item.createdAt : Date.now(),
         status: ["queued", "starting", "failed"].includes(item.status) ? item.status : "queued",
         ...(typeof item.lastError === "string" && item.lastError ? { lastError: item.lastError } : {}),
@@ -163,6 +170,10 @@
 
   let queueItems = normalizeQueueItems(readStoredJson(QUEUE_STORAGE_KEY, []));
   let queueSettings = normalizeQueueSettings(readStoredJson(QUEUE_SETTINGS_KEY, {}));
+  let threadPriorities = readStoredJson(THREAD_PRIORITIES_STORAGE_KEY, {});
+  if (!threadPriorities || typeof threadPriorities !== "object" || Array.isArray(threadPriorities)) {
+    threadPriorities = {};
+  }
   inlineState.acceptedIds = new Set(
     readStoredJson(ACCEPTED_STORAGE_KEY, []).filter?.((id) => typeof id === "string") || [],
   );
@@ -389,6 +400,10 @@
       #${FRAME_ID} .tf-card-top, #${FRAME_ID} .tf-card-foot { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       #${FRAME_ID} .tf-kind { display: inline-flex; align-items: center; gap: 5px; color: #6578e3; font-size: 10px; font-weight: 800; line-height: 1; } #${FRAME_ID} .tf-kind.chat { color: #8b61ca; }
       #${FRAME_ID} .tf-kind .tf-icon { flex: 0 0 auto; vertical-align: 0; }
+      #${FRAME_ID} .tf-card-labels { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+      #${FRAME_ID} .tf-priority { min-height: 21px; padding: 0 7px; display: inline-flex; align-items: center; gap: 3px; border-radius: 6px; color: #687385; background: #eef1f4; font-size: 9px; font-weight: 750; white-space: nowrap; }
+      #${FRAME_ID} .tf-priority .tf-icon { width: 12px; height: 12px; }
+      #${FRAME_ID} .tf-priority.high { color: #b34d41; background: #fff0ed; } #${FRAME_ID} .tf-priority.low { color: #2b8b63; background: #eaf7f0; }
       #${FRAME_ID} .tf-title { width: 100%; min-width: 0; margin: 13px 0 7px; padding: 0; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-align: left; color: var(--tf-ink); border: 0; background: transparent; font-weight: 750; line-height: 1.4; }
       #${FRAME_ID} .tf-title:hover { color: #4f66df; }
       #${FRAME_ID} .tf-meta { min-width: 0; overflow: hidden; overflow-wrap: anywhere; color: #8a94a4; font-size: 10px; }
@@ -397,7 +412,8 @@
       #${FRAME_ID} .tf-mini { min-height: 28px; padding: 0 8px; display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 7px; color: #596de0; background: #eef1ff; font-size: 9px; font-weight: 750; }
       #${FRAME_ID} .tf-mini.review { color: #b77719; background: #fff2d6; } #${FRAME_ID} .tf-mini.danger { color: #9b5147; background: #fff0ed; }
       #${FRAME_ID} .tf-ai { width: 25px; height: 25px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 8px; color: #fff; background: #263449; font-size: 8px; font-weight: 800; }
-      #${FRAME_ID} .tf-progress { height: 3px; margin-top: 10px; overflow: hidden; border-radius: 4px; background: #edf0f4; } #${FRAME_ID} .tf-progress::after { content: ""; width: 64%; height: 100%; display: block; background: linear-gradient(90deg,#657df3,#8670e8); }
+      #${FRAME_ID} .tf-running-state { margin-top: 11px; padding: 8px 10px; display: flex; align-items: center; gap: 7px; color: #5368dc; border-radius: 8px; background: #eef1ff; font-size: 10px; font-weight: 750; }
+      #${FRAME_ID} .tf-running-spinner { width: 14px; height: 14px; flex: 0 0 auto; border: 2px solid #cfd6ff; border-top-color: #526df0; border-radius: 50%; animation: tf-spin .7s linear infinite; }
       #${FRAME_ID} .tf-empty { min-height: 120px; display: grid; place-items: center; align-content: center; gap: 6px; color: #9da6b3; text-align: center; border: 1px dashed #d0d6de; border-radius: 10px; font-size: 10px; }
       #${FRAME_ID} .tf-add { min-height: 39px; flex: 0 0 auto; margin-top: 8px; border: 1px solid #d9deeb; border-radius: 9px; color: #586cdf; background: #fff; font-weight: 750; }
       #${FRAME_ID} .tf-automation { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e7ed; border-radius: 13px; background: #fff; }
@@ -866,6 +882,7 @@
       eye: '<path d="M3 12s3.2-5 9-5 9 5 9 5-3.2 5-9 5-9-5-9-5Z"/><circle cx="12" cy="12" r="2.5"/>',
       arrow: '<path d="M5 12h14M14 7l5 5-5 5"/>',
       play: '<path d="m9 7 8 5-8 5Z"/>',
+      flag: '<path d="M6 21V4m0 1h10l-2 3 2 3H6"/>',
       close: '<path d="m7 7 10 10M17 7 7 17"/>',
     };
     return `<svg class="tf-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name] || paths.task}</svg>`;
@@ -885,6 +902,18 @@
     if (hours < 24) return `${hours} 小时前`;
     if (hours < 48) return "昨天";
     return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(new Date(time));
+  }
+
+  function isToday(seconds) {
+    const time = Number(seconds) * 1000;
+    if (!Number.isFinite(time) || time <= 0) return false;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return time >= start.getTime() && time < start.getTime() + 24 * 60 * 60 * 1000;
+  }
+
+  function priorityLabel(priority) {
+    return priority === "high" ? "高优先级" : priority === "low" ? "低优先级" : "普通";
   }
 
   function formatDateTime(value) {
@@ -939,6 +968,7 @@
       queueId: item.id,
       kind: item.kind,
       title: item.title,
+      priority: normalizePriority(item.priority),
       status: "queued",
       meta: `${relativeTime(item.createdAt / 1000)} · ${workspaceName(item.cwd)} · ${item.status === "starting" ? "正在创建 Codex 对话" : item.status === "failed" ? `启动失败：${item.lastError || "未知错误"}` : "等待 Codex 自动认领"}`,
       result: item.prompt,
@@ -947,9 +977,10 @@
     }));
     const threads = inlineState.threads.map((thread) => {
       const nativeStatus = thread?.status?.type || "notLoaded";
+      const updatedAt = Number(thread.updatedAt || 0);
       const status = nativeStatus === "active"
         ? "running"
-        : inlineState.acceptedIds.has(thread.id) ? "done" : "review";
+        : inlineState.acceptedIds.has(thread.id) || !isToday(updatedAt) ? "done" : "review";
       const title = thread.name?.trim()
         || thread.preview?.trim().split("\n")[0]?.slice(0, 80)
         || "未命名任务";
@@ -960,11 +991,12 @@
         queueId: "",
         kind: automated ? "任务" : "聊天",
         title,
+        priority: normalizePriority(threadPriorities[thread.id] || thread.priority),
         status,
         meta: `${relativeTime(thread.updatedAt)} · ${workspaceName(thread.cwd)}`,
         result: thread.preview?.trim() || "该任务没有可用摘要，请在 Codex 中查看完整记录。",
         error: nativeStatus === "systemError",
-        updatedAt: Number(thread.updatedAt || 0),
+        updatedAt,
       };
     });
     return [...queued, ...threads];
@@ -985,6 +1017,10 @@
     window.localStorage.setItem(ACCEPTED_STORAGE_KEY, JSON.stringify([...inlineState.acceptedIds]));
   }
 
+  function persistThreadPriorities() {
+    window.localStorage.setItem(THREAD_PRIORITIES_STORAGE_KEY, JSON.stringify(threadPriorities));
+  }
+
   function setInlineView(view) {
     if (!["all", "chats", "tasks", "automations"].includes(view)) return;
     inlineState.view = view;
@@ -997,13 +1033,13 @@
     const action = isQueue
       ? `<button class="tf-mini" data-action="queue-start" data-id="${escapeHtml(item.queueId)}">${taskflowIcon("play")} 立即执行</button><button class="tf-mini danger" data-action="queue-delete" data-id="${escapeHtml(item.queueId)}">移除</button>`
       : item.status === "running"
-        ? `<span class="tf-mini">${taskflowIcon("clock")} Codex 正在处理</span>`
+        ? `<button class="tf-mini" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">${taskflowIcon("arrow")} 打开对话</button>`
         : `<button class="tf-mini ${item.status === "review" ? "review" : ""}" data-action="select-item" data-id="${escapeHtml(item.id)}">${taskflowIcon("eye")} ${item.status === "review" ? "快速验收" : "查看摘要"}</button><button class="tf-mini" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">${taskflowIcon("arrow")} 打开对话</button>`;
     return `<article class="tf-card${item.error ? " priority" : ""}" draggable="${item.status !== "running"}" data-item-id="${escapeHtml(item.id)}">
-      <div class="tf-card-top"><span class="tf-kind ${item.kind === "聊天" ? "chat" : "task"}">${taskflowIcon(item.kind === "聊天" ? "chat" : "task")} ${escapeHtml(item.kind)}</span><span>${taskflowIcon(item.status === "running" ? "clock" : "menu")}</span></div>
+      <div class="tf-card-top"><div class="tf-card-labels"><span class="tf-kind ${item.kind === "聊天" ? "chat" : "task"}">${taskflowIcon(item.kind === "聊天" ? "chat" : "task")} ${escapeHtml(item.kind)}</span><span class="tf-priority ${escapeHtml(item.priority)}">${taskflowIcon("flag")} ${escapeHtml(priorityLabel(item.priority))}</span></div><span>${taskflowIcon(item.status === "running" ? "clock" : "menu")}</span></div>
       <button class="tf-title" data-action="select-item" data-id="${escapeHtml(item.id)}">${escapeHtml(item.title)}</button>
       <div class="tf-meta">${escapeHtml(item.meta)}</div>
-      ${item.status === "running" ? '<div class="tf-progress"></div>' : ""}
+      ${item.status === "running" ? '<div class="tf-running-state"><span class="tf-running-spinner"></span><span>Codex 正在处理中</span></div>' : ""}
       <div class="tf-card-foot"><span class="tf-ai">AI</span><div class="tf-card-actions">${action}</div></div>
     </article>`;
   }
@@ -1013,7 +1049,7 @@
     const queued = Boolean(item.queueId);
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal tf-result-modal" role="dialog" aria-modal="true">
       <div class="tf-modal-head"><div><p class="tf-kicker">${escapeHtml(item.kind)}</p><h2>${escapeHtml(item.title)}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-      <div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p>${escapeHtml(item.result)}</p></div>
+      <div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p><span class="tf-priority ${escapeHtml(item.priority)}">${taskflowIcon("flag")} ${escapeHtml(priorityLabel(item.priority))}</span></p><p>${escapeHtml(item.result)}</p></div>
       <div class="tf-modal-actions">${queued ? `<button class="tf-secondary" data-action="queue-delete" data-id="${escapeHtml(item.queueId)}">移除</button>` : ""}<button class="tf-secondary" data-action="close-modal">关闭</button>${queued ? `<button class="tf-primary" data-action="queue-start" data-id="${escapeHtml(item.queueId)}">立即执行</button>` : `<button class="tf-secondary" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">打开对话</button>`}${item.status === "review" ? `<button class="tf-primary" data-action="mark-done" data-id="${escapeHtml(item.id)}">确认并完成</button>` : ""}</div>
     </section></div>`;
   }
@@ -1034,6 +1070,7 @@
       <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2>加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal">${taskflowIcon("close")}</button></div>
       <label class="tf-field">类型<select name="kind"><option value="聊天">聊天</option><option value="任务">任务</option></select></label>
       <label class="tf-field">名称<input name="title" required placeholder="例如：整理本周产品需求"></label>
+      <label class="tf-field">优先级<select name="priority"><option value="high">高优先级</option><option value="normal" selected>普通</option><option value="low">低优先级</option></select></label>
       <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情"></textarea></label>
       <label class="tf-field">工作目录<input name="cwd" required list="tf-workspaces" value="${escapeHtml(defaultWorkspace)}" placeholder="请选择或输入工作目录"><datalist id="tf-workspaces">${workspaces.map((cwd) => `<option value="${escapeHtml(cwd)}"></option>`).join("")}</datalist></label>
       <div class="tf-modal-body">保存后会停留在“待处理”；到达设置的间隔后，Codex 会创建真实对话并提交这段内容。</div>
@@ -1110,8 +1147,10 @@
     const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
     pendingScrollExcludedItemId = "";
     const items = inlineItems();
+    const retainedItems = items.filter((item) => item.status !== "done"
+      || item.updatedAt * 1000 >= Date.now() - COMPLETED_RETENTION_MS);
     const keyword = inlineState.query.trim().toLowerCase();
-    const visible = items.filter((item) => (
+    const visible = retainedItems.filter((item) => (
       (!keyword || item.title.toLowerCase().includes(keyword))
       && (inlineState.view === "all"
         || (inlineState.view === "chats" && item.kind === "聊天")
@@ -1123,9 +1162,9 @@
       ["review", "待验收", "当前没有待验收结果"],
       ["done", "已完成", "还没有确认完成的任务"],
     ];
-    const counts = Object.fromEntries(statuses.map(([key]) => [key, items.filter((item) => item.status === key).length]));
-    const unread = items.filter((item) => item.status === "review" && item.updatedAt * 1000 > inlineState.noticeReadAt).length;
-    const notices = items.filter((item) => item.status === "review").slice(0, 20);
+    const counts = Object.fromEntries(statuses.map(([key]) => [key, retainedItems.filter((item) => item.status === key).length]));
+    const unread = retainedItems.filter((item) => item.status === "review" && item.updatedAt * 1000 > inlineState.noticeReadAt).length;
+    const notices = retainedItems.filter((item) => item.status === "review").slice(0, 20);
     const quota = rateLimitSummary(inlineState.rateLimits);
     const accountName = inlineState.hostContext?.user?.name || "当前账号";
     const selected = items.find((item) => item.id === inlineState.selectedId);
@@ -1578,6 +1617,7 @@
       title,
       prompt,
       cwd,
+      priority: normalizePriority(payload.priority),
       createdAt: Date.now(),
       status: "queued",
     });
@@ -1649,6 +1689,8 @@
         threadId,
         input: [{ type: "text", text: item.prompt, text_elements: [] }],
       });
+      threadPriorities[threadId] = normalizePriority(item.priority);
+      persistThreadPriorities();
       queueItems = queueItems.filter((entry) => entry.id !== item.id);
       queueSettings.lastClaimAt = Date.now();
       scheduleNextClaim(queueSettings.lastClaimAt);
@@ -1983,6 +2025,7 @@
     const payload = {
       kind: data.get("kind") === "任务" ? "任务" : "聊天",
       title: String(data.get("title") || "").trim(),
+      priority: normalizePriority(data.get("priority")),
       prompt: String(data.get("prompt") || "").trim(),
       cwd: String(data.get("cwd") || "").trim(),
     };

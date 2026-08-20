@@ -131,13 +131,13 @@
 
   <!-- running card -->
   <g filter="url(#shadow)"><rect x="434" y="380" width="328" height="222" rx="16" fill="white" stroke="#CAD3FF"/></g>
-  <text x="454" y="412" fill="#8A5BDC" class="label">▤ 聊天</text><text x="730" y="412" text-anchor="end" class="muted medium">◉</text>
+  <text x="454" y="412" fill="#8A5BDC" class="label">▤ 聊天</text><rect x="518" y="393" width="58" height="26" rx="8" fill="#EEF1F4"/><text x="547" y="411" text-anchor="middle" class="muted small">⚑ 普通</text><text x="730" y="412" text-anchor="end" class="muted medium">◉</text>
   <text x="454" y="451" class="title" font-size="19">生成竞品更新摘要</text>
   <text x="454" y="482" class="muted small">刚刚 · 市场研究</text>
-  <rect x="454" y="510" width="288" height="7" rx="3.5" fill="#E5E9F2"/>
-  <rect x="454" y="510" width="186" height="7" rx="3.5" fill="#5C70F2"/>
+  <rect x="454" y="500" width="288" height="38" rx="10" fill="#EEF1FF"/>
+  <circle cx="474" cy="519" r="8" fill="none" stroke="#526DF0" stroke-width="3" stroke-dasharray="28 18"/><text x="490" y="524" fill="#536FF2" font-size="13" font-weight="650">Codex 正在处理中</text>
   <rect x="454" y="546" width="36" height="30" rx="9" fill="#21304A"/><text x="472" y="566" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
-  <rect x="574" y="542" width="168" height="38" rx="11" fill="#E9EDFF"/><text x="658" y="566" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">◷ Codex 正在处理</text>
+  <rect x="612" y="542" width="130" height="38" rx="11" fill="#E9EDFF"/><text x="677" y="566" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">→ 打开对话</text>
 
   <rect x="434" y="625" width="328" height="202" rx="16" fill="#F7F8FC" stroke="#D5DBEA" stroke-dasharray="6 6"/>
   <circle cx="598" cy="701" r="24" fill="#E8ECF7"/><text x="598" y="708" text-anchor="middle" fill="#95A2B5" font-size="22">✓</text>
