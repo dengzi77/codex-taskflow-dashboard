@@ -1239,6 +1239,19 @@
     }
   }
 
+  function captureCreateDraft(form) {
+    if (!form) return;
+    const draftData = new FormData(form);
+    inlineState.createDraft = {
+      kind: draftData.get("kind") === "任务" ? "任务" : "聊天",
+      title: String(draftData.get("title") || ""),
+      priority: normalizePriority(draftData.get("priority")),
+      prompt: String(draftData.get("prompt") || ""),
+      workspaceMode: draftData.get("workspaceMode") === "none" ? "none" : "project",
+      projectId: String(draftData.get("projectId") || inlineState.createDraft.projectId || ""),
+    };
+  }
+
   function createModalHtml() {
     if (inlineState.projectLoading) {
       return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
@@ -1347,17 +1360,7 @@
   function renderInlineBoard() {
     if (!frame?.isConnected || frame.dataset.renderMode !== "native") return;
     const createForm = frame.querySelector('[data-form="queue-create"]');
-    if (createForm) {
-      const draftData = new FormData(createForm);
-      inlineState.createDraft = {
-        kind: draftData.get("kind") === "任务" ? "任务" : "聊天",
-        title: String(draftData.get("title") || ""),
-        priority: normalizePriority(draftData.get("priority")),
-        prompt: String(draftData.get("prompt") || ""),
-        workspaceMode: draftData.get("workspaceMode") === "none" ? "none" : "project",
-        projectId: String(draftData.get("projectId") || ""),
-      };
-    }
+    captureCreateDraft(createForm);
     const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
     const activeModalControl = frame.querySelector(".tf-modal")?.contains(document.activeElement)
       ? {
@@ -2266,6 +2269,11 @@
   }
 
   function onInlineInput(event) {
+    const createForm = event.target?.closest?.('[data-form="queue-create"]');
+    if (createForm) {
+      captureCreateDraft(createForm);
+      return;
+    }
     if (event.target?.dataset?.role !== "search") return;
     inlineState.query = event.target.value;
     renderInlineBoard();
@@ -2275,13 +2283,32 @@
   }
 
   function onInlineChange(event) {
-    if (event.target?.name !== "workspaceMode") return;
     const form = event.target.closest?.('[data-form="queue-create"]');
+    if (!form) return;
+    captureCreateDraft(form);
+    if (event.target?.name !== "workspaceMode") return;
     const projectField = form?.querySelector(".tf-project-select");
     const projectSelect = projectField?.querySelector('select[name="projectId"]');
     const usesProject = event.target.value === "project";
     if (projectField) projectField.hidden = !usesProject;
     if (projectSelect) projectSelect.disabled = !usesProject;
+  }
+
+  function onInlineWindowKeyDown(event) {
+    if (event.key !== "Enter") return;
+    const prompt = event.target?.closest?.('[data-form="queue-create"] textarea[name="prompt"]');
+    if (!prompt || !frame?.contains(prompt)) return;
+    event.stopImmediatePropagation();
+    if (event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    const start = Number.isInteger(prompt.selectionStart) ? prompt.selectionStart : prompt.value.length;
+    const end = Number.isInteger(prompt.selectionEnd) ? prompt.selectionEnd : start;
+    prompt.setRangeText("\n", start, end, "end");
+    prompt.dispatchEvent(new InputEvent("input", {
+      bubbles: true,
+      inputType: "insertLineBreak",
+      data: null,
+    }));
   }
 
   function onInlineKeyDown(event) {
@@ -2869,6 +2896,7 @@
     pendingThreadCreation = null;
     document.removeEventListener("DOMContentLoaded", mount);
     document.removeEventListener("click", onDocumentClick, true);
+    window.removeEventListener("keydown", onInlineWindowKeyDown, true);
     window.removeEventListener("message", onFrameMessage);
     window.removeEventListener("popstate", onNativeRouteChange);
     window.removeEventListener("hashchange", onNativeRouteChange);
@@ -2903,6 +2931,7 @@
   window[SENTINEL_KEY] = api;
 
   window.addEventListener("message", onFrameMessage);
+  window.addEventListener("keydown", onInlineWindowKeyDown, true);
   window.addEventListener("popstate", onNativeRouteChange);
   window.addEventListener("hashchange", onNativeRouteChange);
   window.addEventListener("resize", scheduleRefresh);
