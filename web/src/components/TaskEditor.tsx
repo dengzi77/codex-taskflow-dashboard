@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "../api";
 import {
-  TASK_PRIORITIES,
   TASK_STATUSES,
   type ActorIdentity,
   type DevelopmentContext,
@@ -22,7 +21,8 @@ import {
 import { ActorAvatar } from "./ActorAvatar";
 import { STATUS_DETAILS } from "./BoardColumn";
 import { LabelPicker } from "./LabelPicker";
-import { LinearIcon, LinearPriorityIcon, LinearStatusIcon } from "./LinearIcon";
+import { LinearIcon, LinearStatusIcon } from "./LinearIcon";
+import { PriorityPicker } from "./PriorityPicker";
 import {
   fileKey,
   MAX_ATTACHMENT_SIZE,
@@ -36,14 +36,6 @@ import {
   type InlineMediaSegment,
   type PendingInlineImage,
 } from "./InlineMediaComposer";
-
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  none: "无优先级",
-  urgent: "紧急",
-  high: "高",
-  medium: "中",
-  low: "低",
-};
 
 const RECURRENCE_UNITS: Record<Recurrence["unit"], string> = {
   day: "天",
@@ -292,13 +284,12 @@ export function TaskEditor({
                 {TASK_STATUSES.map((value) => <option value={value} key={value}>{STATUS_DETAILS[value].label}</option>)}
               </select>
             </label>
-            <label className={`property-control property-priority priority-${priority}`}>
-              <LinearPriorityIcon priority={priority} />
-              <span className="sr-only">优先级</span>
-              <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
-                {TASK_PRIORITIES.map((value) => <option value={value} key={value}>{PRIORITY_LABELS[value]}</option>)}
-              </select>
-            </label>
+            <PriorityPicker
+              value={priority}
+              triggerClassName="property-control property-priority"
+              showTriggerIcon
+              onChange={setPriority}
+            />
             <label className="property-control property-assignee">
               <ActorAvatar actor={assignee} className="property-assignee-avatar" />
               <select

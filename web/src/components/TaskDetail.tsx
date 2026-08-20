@@ -39,6 +39,7 @@ import { ActorAvatar } from "./ActorAvatar";
 import { STATUS_DETAILS } from "./BoardColumn";
 import { LabelPicker } from "./LabelPicker";
 import { LinearIcon, LinearPriorityIcon, LinearStatusIcon } from "./LinearIcon";
+import { PriorityPicker } from "./PriorityPicker";
 import {
   fileKey,
   MAX_ATTACHMENT_SIZE,
@@ -65,14 +66,6 @@ const RichTextEditor = lazy(async () => {
   const module = await import("./RichTextEditor");
   return { default: module.RichTextEditor };
 });
-
-const PRIORITY_DETAILS: Record<TaskPriority, { label: string; bars: number }> = {
-  none: { label: "无优先级", bars: 0 },
-  urgent: { label: "紧急", bars: 3 },
-  high: { label: "高", bars: 3 },
-  medium: { label: "中", bars: 2 },
-  low: { label: "低", bars: 1 },
-};
 
 interface TaskDetailProps {
   task: Task;
@@ -1007,19 +1000,17 @@ export function TaskDetail({
                 ))}
               </select>
             </label>
-            <label className="detail-property-row">
+            <div className="detail-property-row">
               <span className="detail-property-icon"><LinearPriorityIcon priority={currentTask.priority} /></span>
               <span className="detail-property-label">优先级</span>
-              <select
+              <PriorityPicker
                 value={currentTask.priority}
                 disabled={savingProperty === "priority"}
-                onChange={(event) => void saveTask({ priority: event.target.value as TaskPriority }, "priority")}
-              >
-                {(Object.keys(PRIORITY_DETAILS) as TaskPriority[]).map((priority) => (
-                  <option value={priority} key={priority}>{PRIORITY_DETAILS[priority].label}</option>
-                ))}
-              </select>
-            </label>
+                className="detail-priority-picker"
+                triggerClassName="detail-priority-trigger"
+                onChange={(priority) => void saveTask({ priority }, "priority")}
+              />
+            </div>
             <label className="detail-property-row assignee-property">
               <ActorAvatar actor={currentTask.assignee} className="detail-assignee-avatar" />
               <span className="detail-property-label">负责人</span>
