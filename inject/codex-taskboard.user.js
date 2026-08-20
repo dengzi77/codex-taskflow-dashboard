@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "taskflow-1.5.1";
+  const VERSION = "taskflow-1.5.2";
   const SOURCE_HASH = window.__CODEX_TASKBOARD_SOURCE_HASH__;
   const SENTINEL_KEY = "__codexTaskboardInjection__";
   const DEFAULT_TASKBOARD_URL = "http://127.0.0.1:47823/?host=codex";
@@ -450,15 +450,15 @@
       #${FRAME_ID} .tf-refresh-button.loading .tf-icon { animation: tf-spin .7s linear infinite; }
       @keyframes tf-spin { to { transform: rotate(360deg); } }
       #${FRAME_ID} .tf-modal-backdrop { position: absolute; inset: 0; z-index: 60; padding: 20px; display: grid; place-items: center; background: #18223066; backdrop-filter: blur(4px); }
-      #${FRAME_ID} .tf-modal { width: min(490px,100%); max-height: calc(100% - 20px); overflow: auto; border: 1px solid #e4e8ed; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px #10182830; }
-      #${FRAME_ID} .tf-result-modal { height: min(560px, calc(100% - 20px)); display: flex; flex-direction: column; overflow: hidden; }
-      #${FRAME_ID} .tf-modal-head { padding: 20px 21px 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; border-bottom: 1px solid #edf0f3; }
+      #${FRAME_ID} .tf-modal { width: min(490px,100%); height: min(640px, calc(100% - 40px)); min-height: 0; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #e4e8ed; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px #10182830; }
+      #${FRAME_ID} .tf-modal-head { flex: 0 0 auto; padding: 20px 21px 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; border-bottom: 1px solid #edf0f3; background: #fff; }
       #${FRAME_ID} .tf-modal-head h2 { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 17px; } #${FRAME_ID} .tf-kicker { margin: 0; color: #6578e3; font-size: 9px; font-weight: 800; text-transform: uppercase; }
       #${FRAME_ID} .tf-close { width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; border: 0; border-radius: 9px; color: #77808e; background: #f2f4f7; }
       #${FRAME_ID} .tf-modal-body { padding: 18px 21px; color: #657080; } #${FRAME_ID} .tf-modal-body p { overflow-wrap: anywhere; white-space: pre-wrap; }
-      #${FRAME_ID} .tf-result-modal .tf-modal-head, #${FRAME_ID} .tf-result-modal .tf-modal-actions { flex: 0 0 auto; }
-      #${FRAME_ID} .tf-result-modal .tf-modal-body { min-height: 0; flex: 1; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-      #${FRAME_ID} .tf-modal-actions { padding: 0 21px 20px; display: flex; justify-content: flex-end; gap: 8px; }
+      #${FRAME_ID} .tf-modal-scroll { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #bcc4cf transparent; }
+      #${FRAME_ID} .tf-modal-scroll::-webkit-scrollbar { width: 7px; }
+      #${FRAME_ID} .tf-modal-scroll::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 7px; background: #bcc4cf; background-clip: padding-box; }
+      #${FRAME_ID} .tf-modal-actions { flex: 0 0 auto; padding: 14px 21px 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #edf0f3; background: #fff; }
       #${FRAME_ID} .tf-field { margin: 16px 21px 0; display: grid; gap: 7px; color: #515b69; font-size: 10px; font-weight: 700; }
       #${FRAME_ID} .tf-field input, #${FRAME_ID} .tf-field select, #${FRAME_ID} .tf-field textarea { width: 100%; min-width: 0; min-height: 42px; padding: 9px 10px; outline: 0; color: #344054; border: 1px solid #dfe3e9; border-radius: 8px; background: #fff; }
       #${FRAME_ID} .tf-field textarea { min-height: 105px; resize: vertical; }
@@ -485,11 +485,11 @@
       #${FRAME_ID}[data-theme="dark"] .tf-field input, #${FRAME_ID}[data-theme="dark"] .tf-field select, #${FRAME_ID}[data-theme="dark"] .tf-field textarea { color: #e6ebf2; border-color: #444b57; background: #1b1e24; }
       #${FRAME_ID}[data-theme="dark"] .tf-choice:has(input:checked), #${FRAME_ID}[data-theme="dark"] .tf-tabs button.active { background: #29304b; }
       #${FRAME_ID}[data-theme="dark"] .tf-choice-copy strong, #${FRAME_ID}[data-theme="dark"] .tf-modal-head h2 { color: #edf1f7; }
-      #${FRAME_ID}[data-theme="dark"] .tf-modal-head, #${FRAME_ID}[data-theme="dark"] .tf-notice-head, #${FRAME_ID}[data-theme="dark"] .tf-automation-head { border-color: #353b45; }
+      #${FRAME_ID}[data-theme="dark"] .tf-modal-head, #${FRAME_ID}[data-theme="dark"] .tf-modal-actions, #${FRAME_ID}[data-theme="dark"] .tf-notice-head, #${FRAME_ID}[data-theme="dark"] .tf-automation-head { border-color: #353b45; background: #22262d; }
       #${FRAME_ID}[data-theme="dark"] .tf-close { color: #b8c0cc; background: #30353e; }
       @media (max-width: 1050px) { #${FRAME_ID} .tf-shell { padding: 18px 16px 14px; } #${FRAME_ID} .tf-topbar { align-items: flex-start; } #${FRAME_ID} .tf-actions { flex-wrap: wrap; justify-content: flex-end; } #${FRAME_ID} .tf-search { width: 210px; } #${FRAME_ID} .tf-account-chip { max-width: 170px; } #${FRAME_ID} .tf-sync { display: none; } #${FRAME_ID} .tf-notice { right: 16px; } }
       @media (max-width: 820px) { #${FRAME_ID} .tf-topbar { flex-direction: column; align-items: stretch; gap: 10px; } #${FRAME_ID} .tf-top-left { overflow-x: auto; scrollbar-width: none; } #${FRAME_ID} .tf-actions { width: 100%; justify-content: flex-start; } #${FRAME_ID} .tf-search { width: 100%; flex: 1 1 100%; } #${FRAME_ID} .tf-account { margin-left: auto; } #${FRAME_ID} .tf-account-chip { width: 43px; padding-right: 5px; } #${FRAME_ID} .tf-account-copy { display: none; } #${FRAME_ID} .tf-summary-row { overflow-x: auto; padding-bottom: 3px; } #${FRAME_ID} .tf-board { grid-template-columns: repeat(4, minmax(calc(100% - 12px), 1fr)); } }
-      @media (max-width: 520px) { #${FRAME_ID} .tf-shell { padding: 12px 10px 10px; } #${FRAME_ID} .tf-tabs { min-width: 100%; } #${FRAME_ID} .tf-tabs button { min-width: 0; flex: 1; padding: 0 5px; gap: 4px; font-size: 11px; } #${FRAME_ID} .tf-actions > .tf-secondary { flex: 1 1 auto; } #${FRAME_ID} .tf-summary { min-width: 132px; } #${FRAME_ID} .tf-modal-backdrop { padding: 8px; } #${FRAME_ID} .tf-modal { max-height: calc(100% - 4px); border-radius: 13px; } #${FRAME_ID} .tf-modal-actions { flex-wrap: wrap; } #${FRAME_ID} .tf-modal-actions button { flex: 1 1 auto; } #${FRAME_ID} .tf-notice { top: 118px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 130px); } }
+      @media (max-width: 520px) { #${FRAME_ID} .tf-shell { padding: 12px 10px 10px; } #${FRAME_ID} .tf-tabs { min-width: 100%; } #${FRAME_ID} .tf-tabs button { min-width: 0; flex: 1; padding: 0 5px; gap: 4px; font-size: 11px; } #${FRAME_ID} .tf-actions > .tf-secondary { flex: 1 1 auto; } #${FRAME_ID} .tf-summary { min-width: 132px; } #${FRAME_ID} .tf-modal-backdrop { padding: 8px; } #${FRAME_ID} .tf-modal { height: calc(100% - 4px); border-radius: 13px; } #${FRAME_ID} .tf-modal-actions { flex-wrap: wrap; } #${FRAME_ID} .tf-modal-actions button { flex: 1 1 auto; } #${FRAME_ID} .tf-notice { top: 118px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 130px); } }
       @media (pointer: coarse) { #${FRAME_ID} button, #${FRAME_ID} .tf-choice { min-height: 44px; } #${FRAME_ID} .tf-tabs button, #${FRAME_ID} .tf-mini, #${FRAME_ID} .tf-close { min-height: 44px; } }
       @media (prefers-reduced-motion: reduce) { #${FRAME_ID} *, #${FRAME_ID} *::before, #${FRAME_ID} *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
     `;
@@ -1087,7 +1087,7 @@
     const queued = Boolean(item.queueId);
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal tf-result-modal" role="dialog" aria-modal="true" aria-labelledby="tf-result-title">
       <div class="tf-modal-head"><div><p class="tf-kicker">${escapeHtml(item.kind)}</p><h2 id="tf-result-title">${escapeHtml(item.title)}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-      <div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p><span class="tf-priority ${escapeHtml(item.priority)}">${taskflowIcon("flag")} ${escapeHtml(priorityLabel(item.priority))}</span></p><p>${escapeHtml(item.result)}</p></div>
+      <div class="tf-modal-scroll"><div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p><span class="tf-priority ${escapeHtml(item.priority)}">${taskflowIcon("flag")} ${escapeHtml(priorityLabel(item.priority))}</span></p><p>${escapeHtml(item.result)}</p></div></div>
       <div class="tf-modal-actions">${queued ? `<button class="tf-secondary" data-action="queue-delete" data-id="${escapeHtml(item.queueId)}">移除</button>` : ""}<button class="tf-secondary" data-action="close-modal">关闭</button>${queued ? `<button class="tf-primary" data-action="queue-start" data-id="${escapeHtml(item.queueId)}">立即执行</button>` : `<button class="tf-secondary" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">打开对话</button>`}${item.status === "review" ? `<button class="tf-primary" data-action="mark-done" data-id="${escapeHtml(item.id)}">确认并完成</button>` : ""}</div>
     </section></div>`;
   }
@@ -1096,7 +1096,7 @@
     if (!item) return "";
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-automation-title">
       <div class="tf-modal-head"><div><p class="tf-kicker">Automation</p><h2 id="tf-automation-title">${escapeHtml(item.name || "未命名自动化")}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-      <div class="tf-modal-body"><strong>${escapeHtml(automationSchedule(item))} · 下次 ${escapeHtml(formatDateTime(item.nextRunAt))}</strong><p>${escapeHtml(item.prompt || "暂无可预览内容")}</p></div>
+      <div class="tf-modal-scroll"><div class="tf-modal-body"><strong>${escapeHtml(automationSchedule(item))} · 下次 ${escapeHtml(formatDateTime(item.nextRunAt))}</strong><p>${escapeHtml(item.prompt || "暂无可预览内容")}</p></div></div>
       <div class="tf-modal-actions"><button class="tf-secondary" data-action="close-modal">关闭</button><button class="tf-primary" data-action="open-scheduled">前往计划入口</button></div>
     </section></div>`;
   }
@@ -1164,7 +1164,7 @@
     if (inlineState.projectLoading) {
       return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
         <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2 id="tf-create-title">加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-        <div class="tf-inline-status" role="status" aria-live="polite"><span class="tf-spinner"></span><span>正在读取 Codex 项目…</span></div>
+        <div class="tf-modal-scroll"><div class="tf-inline-status" role="status" aria-live="polite"><span class="tf-spinner"></span><span>正在读取 Codex 项目…</span></div></div>
       </section></div>`;
     }
     const projects = (inlineState.hostContext?.projects || []).filter((project) => (
@@ -1177,17 +1177,19 @@
     const hasProjects = projects.length > 0;
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><form class="tf-modal" data-form="queue-create" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
       <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2 id="tf-create-title">加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-      <label class="tf-field">类型<select name="kind"><option value="聊天">聊天</option><option value="任务">任务</option></select></label>
-      <label class="tf-field">名称<input name="title" required autofocus placeholder="例如：整理本周产品需求"></label>
-      <label class="tf-field">优先级<select name="priority"><option value="high">高优先级</option><option value="normal" selected>普通</option><option value="low">低优先级</option></select></label>
-      <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情"></textarea></label>
-      <fieldset class="tf-choice-group"><legend>在哪里处理</legend>
-        <label class="tf-choice"><input type="radio" name="workspaceMode" value="project" ${hasProjects ? "checked" : "disabled"}><span class="tf-choice-copy"><strong>在项目中处理</strong><small>使用所选 Codex 项目的文件和上下文</small></span></label>
-        <label class="tf-choice"><input type="radio" name="workspaceMode" value="none" ${hasProjects ? "" : "checked"}><span class="tf-choice-copy"><strong>不需要项目</strong><small>适合翻译、总结、写作等通用任务</small></span></label>
-      </fieldset>
-      <label class="tf-field tf-project-select" ${hasProjects ? "" : "hidden"}>选择项目<select name="projectId" ${hasProjects ? "required" : "disabled"}>${projects.map((project) => `<option value="${escapeHtml(project.id)}" ${project.id === defaultProjectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`).join("")}</select><small>只显示项目名称，不需要选择目录。</small></label>
-      ${inlineState.projectLoadError ? `<div class="tf-modal-body" role="status">项目暂不可用（${escapeHtml(inlineState.projectLoadError)}），仍可选择“不需要项目”。</div>` : ""}
-      <div class="tf-modal-body">保存后会停留在“待处理”；到达设置的间隔后，Codex 会创建真实对话并提交这段内容。</div>
+      <div class="tf-modal-scroll">
+        <label class="tf-field">类型<select name="kind"><option value="聊天">聊天</option><option value="任务">任务</option></select></label>
+        <label class="tf-field">名称<input name="title" required autofocus placeholder="例如：整理本周产品需求"></label>
+        <label class="tf-field">优先级<select name="priority"><option value="high">高优先级</option><option value="normal" selected>普通</option><option value="low">低优先级</option></select></label>
+        <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情"></textarea></label>
+        <fieldset class="tf-choice-group"><legend>在哪里处理</legend>
+          <label class="tf-choice"><input type="radio" name="workspaceMode" value="project" ${hasProjects ? "checked" : "disabled"}><span class="tf-choice-copy"><strong>在项目中处理</strong><small>使用所选 Codex 项目的文件和上下文</small></span></label>
+          <label class="tf-choice"><input type="radio" name="workspaceMode" value="none" ${hasProjects ? "" : "checked"}><span class="tf-choice-copy"><strong>不需要项目</strong><small>适合翻译、总结、写作等通用任务</small></span></label>
+        </fieldset>
+        <label class="tf-field tf-project-select" ${hasProjects ? "" : "hidden"}>选择项目<select name="projectId" ${hasProjects ? "required" : "disabled"}>${projects.map((project) => `<option value="${escapeHtml(project.id)}" ${project.id === defaultProjectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`).join("")}</select><small>只显示项目名称，不需要选择目录。</small></label>
+        ${inlineState.projectLoadError ? `<div class="tf-modal-body" role="status">项目暂不可用（${escapeHtml(inlineState.projectLoadError)}），仍可选择“不需要项目”。</div>` : ""}
+        <div class="tf-modal-body">保存后会停留在“待处理”；到达设置的间隔后，Codex 会创建真实对话并提交这段内容。</div>
+      </div>
       <div class="tf-modal-actions"><button type="button" class="tf-secondary" data-action="close-modal">取消</button><button class="tf-primary" type="submit">加入队列</button></div>
     </form></div>`;
   }
@@ -1198,11 +1200,13 @@
       : "未计划";
     return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-settings-title">
       <div class="tf-modal-head"><div><p class="tf-kicker">Taskflow</p><h2 id="tf-settings-title">看板配置</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
-      <div class="tf-setting-row"><div><strong>自动认领待处理</strong><p>按间隔逐个创建真实 Codex 对话；达到同时处理上限后等待。</p></div><button class="tf-switch ${queueSettings.enabled ? "on" : ""}" data-action="toggle-auto" aria-pressed="${queueSettings.enabled}"></button></div>
-      <label class="tf-field">认领间隔（分钟）<input id="tf-interval" type="number" min="1" max="1440" value="${queueSettings.intervalMinutes}"><small>当前 ${queueItems.length} 项待处理 · 下次认领：${escapeHtml(next)}</small></label>
-      <label class="tf-field">同时处理任务数<input id="tf-concurrency" type="number" min="1" max="10" value="${queueSettings.maxConcurrent}"><small>自动认领最多允许 1–10 个任务同时处于“正在处理”，默认 5。</small></label>
+      <div class="tf-modal-scroll">
+        <div class="tf-setting-row"><div><strong>自动认领待处理</strong><p>按间隔逐个创建真实 Codex 对话；达到同时处理上限后等待。</p></div><button class="tf-switch ${queueSettings.enabled ? "on" : ""}" data-action="toggle-auto" aria-pressed="${queueSettings.enabled}"></button></div>
+        <label class="tf-field">认领间隔（分钟）<input id="tf-interval" type="number" min="1" max="1440" value="${queueSettings.intervalMinutes}"><small>当前 ${queueItems.length} 项待处理 · 下次认领：${escapeHtml(next)}</small></label>
+        <label class="tf-field">同时处理任务数<input id="tf-concurrency" type="number" min="1" max="10" value="${queueSettings.maxConcurrent}"><small>自动认领最多允许 1–10 个任务同时处于“正在处理”，默认 5。</small></label>
+        <div class="tf-modal-body">“确认完成”只保存在这台设备，不会暂停、删除或修改自动化计划。</div>
+      </div>
       <div class="tf-modal-actions"><button class="tf-secondary" data-action="claim-next" ${queueItems.length ? "" : "disabled"}>立即认领下一项</button><button class="tf-primary" data-action="save-queue-settings">保存设置</button></div>
-      <div class="tf-modal-body">“确认完成”只保存在这台设备，不会暂停、删除或修改自动化计划。</div>
     </section></div>`;
   }
 
