@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "taskflow-1.4.0";
+  const VERSION = "taskflow-1.5.0";
   const SOURCE_HASH = window.__CODEX_TASKBOARD_SOURCE_HASH__;
   const SENTINEL_KEY = "__codexTaskboardInjection__";
   const DEFAULT_TASKBOARD_URL = "http://127.0.0.1:47823/?host=codex";
@@ -118,6 +118,10 @@
     quotaRequestId: "",
     refreshing: false,
     refreshRequestIds: new Set(),
+    deviceWorkspaces: {},
+    projectLoading: false,
+    projectLoadError: "",
+    modalFocusPending: false,
   };
 
   function readStoredJson(key, fallback) {
@@ -140,13 +144,17 @@
       const title = typeof item?.title === "string" ? item.title.trim() : "";
       const prompt = typeof item?.prompt === "string" ? item.prompt.trim() : "";
       const cwd = typeof item?.cwd === "string" ? item.cwd.trim() : "";
-      if (!id || !title || !prompt || !cwd) return [];
+      const workspaceMode = item?.workspaceMode === "none" ? "none" : "project";
+      if (!id || !title || !prompt || (workspaceMode === "project" && !cwd)) return [];
       return [{
         id,
         kind: item.kind === "任务" ? "任务" : "聊天",
         title,
         prompt,
         cwd,
+        workspaceMode,
+        projectId: typeof item?.projectId === "string" ? item.projectId.trim() : "",
+        projectName: typeof item?.projectName === "string" ? item.projectName.trim() : "",
         priority: normalizePriority(item.priority),
         createdAt: Number.isFinite(item.createdAt) ? item.createdAt : Date.now(),
         status: ["queued", "starting", "failed"].includes(item.status) ? item.status : "queued",
@@ -346,7 +354,10 @@
       #${FRAME_ID} * { box-sizing: border-box; }
       #${FRAME_ID} button, #${FRAME_ID} input, #${FRAME_ID} select, #${FRAME_ID} textarea { font: inherit; }
       #${FRAME_ID} button { cursor: pointer; transition: transform .08s ease, filter .12s ease, background-color .12s ease; }
+      #${FRAME_ID} button:not(:disabled):hover { filter: brightness(.98); }
       #${FRAME_ID} button:not(:disabled):active { transform: scale(.97); filter: brightness(.96); }
+      #${FRAME_ID} button:disabled { cursor: not-allowed; opacity: .5; }
+      #${FRAME_ID} button:focus-visible, #${FRAME_ID} input:focus-visible, #${FRAME_ID} select:focus-visible, #${FRAME_ID} textarea:focus-visible { outline: 2px solid #6377ed; outline-offset: 2px; }
       #${FRAME_ID} .tf-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; padding: 22px 24px 18px; overflow: hidden; }
       #${FRAME_ID} .tf-topbar { min-width: 0; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
       #${FRAME_ID} .tf-top-left, #${FRAME_ID} .tf-actions, #${FRAME_ID} .tf-account { min-width: 0; display: flex; align-items: center; gap: 9px; }
@@ -449,11 +460,36 @@
       #${FRAME_ID} .tf-field { margin: 16px 21px 0; display: grid; gap: 7px; color: #515b69; font-size: 10px; font-weight: 700; }
       #${FRAME_ID} .tf-field input, #${FRAME_ID} .tf-field select, #${FRAME_ID} .tf-field textarea { width: 100%; min-width: 0; padding: 9px 10px; outline: 0; color: #344054; border: 1px solid #dfe3e9; border-radius: 8px; background: #fff; }
       #${FRAME_ID} .tf-field textarea { min-height: 105px; resize: vertical; }
+      #${FRAME_ID} .tf-choice-group { margin: 16px 21px 0; padding: 0; display: grid; gap: 8px; border: 0; }
+      #${FRAME_ID} .tf-choice-group legend { margin-bottom: 7px; color: #515b69; font-size: 10px; font-weight: 700; }
+      #${FRAME_ID} .tf-choice { min-width: 0; padding: 12px 13px; display: flex; align-items: flex-start; gap: 10px; border: 1px solid #dfe3e9; border-radius: 10px; background: #fff; cursor: pointer; }
+      #${FRAME_ID} .tf-choice:has(input:checked) { border-color: #8796ef; background: #f4f6ff; box-shadow: 0 0 0 1px #8796ef inset; }
+      #${FRAME_ID} .tf-choice input { width: 16px; height: 16px; flex: 0 0 auto; margin: 2px 0 0; accent-color: #526df0; }
+      #${FRAME_ID} .tf-choice-copy { min-width: 0; display: grid; gap: 3px; }
+      #${FRAME_ID} .tf-choice-copy strong { color: #344054; font-size: 11px; }
+      #${FRAME_ID} .tf-choice-copy small, #${FRAME_ID} .tf-field small { color: #7d8796; font-size: 9px; font-weight: 500; }
+      #${FRAME_ID} .tf-project-select[hidden] { display: none; }
+      #${FRAME_ID} .tf-inline-status { min-height: 110px; padding: 24px; display: grid; place-items: center; align-content: center; gap: 9px; color: #697586; text-align: center; }
       #${FRAME_ID} .tf-setting-row { margin: 16px 21px; padding: 13px; display: flex; align-items: center; justify-content: space-between; gap: 13px; border: 1px solid #e6eaf0; border-radius: 10px; background: #fafbfc; }
       #${FRAME_ID} .tf-setting-row p { margin: 4px 0 0; color: #7d8796; font-size: 9px; }
       #${FRAME_ID} .tf-switch { width: 42px; height: 24px; padding: 3px; flex: 0 0 auto; border: 0; border-radius: 14px; background: #cfd4dc; } #${FRAME_ID} .tf-switch::after { content: ""; width: 18px; height: 18px; display: block; border-radius: 50%; background: #fff; transition: .18s; } #${FRAME_ID} .tf-switch.on { background: #6075ed; } #${FRAME_ID} .tf-switch.on::after { transform: translateX(18px); }
       #${FRAME_ID} .tf-toast { position: absolute; z-index: 80; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 14px; color: #fff; border-radius: 9px; background: #253243; box-shadow: 0 12px 30px #1d29392d; }
+      #${FRAME_ID}[data-theme="dark"] { --tf-ink: #edf1f7; --tf-muted: #98a3b3; --tf-line: #363c47; color-scheme: dark; background: #171a1f; }
+      #${FRAME_ID}[data-theme="dark"] .tf-tabs, #${FRAME_ID}[data-theme="dark"] .tf-search, #${FRAME_ID}[data-theme="dark"] .tf-expand, #${FRAME_ID}[data-theme="dark"] .tf-secondary, #${FRAME_ID}[data-theme="dark"] .tf-icon-button, #${FRAME_ID}[data-theme="dark"] .tf-account-chip, #${FRAME_ID}[data-theme="dark"] .tf-summary, #${FRAME_ID}[data-theme="dark"] .tf-card, #${FRAME_ID}[data-theme="dark"] .tf-add, #${FRAME_ID}[data-theme="dark"] .tf-automation, #${FRAME_ID}[data-theme="dark"] .tf-auto-item, #${FRAME_ID}[data-theme="dark"] .tf-notice, #${FRAME_ID}[data-theme="dark"] .tf-notice-item, #${FRAME_ID}[data-theme="dark"] .tf-modal, #${FRAME_ID}[data-theme="dark"] .tf-loading-content, #${FRAME_ID}[data-theme="dark"] .tf-choice { color: #dfe5ee; border-color: #3a414d; background: #22262d; }
+      #${FRAME_ID}[data-theme="dark"] .tf-column { border-color: #343b46; background: #20242a; }
+      #${FRAME_ID}[data-theme="dark"] .tf-column.running { border-color: #39446d; background: #20263a; }
+      #${FRAME_ID}[data-theme="dark"] .tf-column.review { border-color: #59492d; background: #30291e; }
+      #${FRAME_ID}[data-theme="dark"] .tf-column.done { border-color: #315344; background: #1f3029; }
+      #${FRAME_ID}[data-theme="dark"] .tf-field input, #${FRAME_ID}[data-theme="dark"] .tf-field select, #${FRAME_ID}[data-theme="dark"] .tf-field textarea { color: #e6ebf2; border-color: #444b57; background: #1b1e24; }
+      #${FRAME_ID}[data-theme="dark"] .tf-choice:has(input:checked), #${FRAME_ID}[data-theme="dark"] .tf-tabs button.active { background: #29304b; }
+      #${FRAME_ID}[data-theme="dark"] .tf-choice-copy strong, #${FRAME_ID}[data-theme="dark"] .tf-modal-head h2 { color: #edf1f7; }
+      #${FRAME_ID}[data-theme="dark"] .tf-modal-head, #${FRAME_ID}[data-theme="dark"] .tf-notice-head, #${FRAME_ID}[data-theme="dark"] .tf-automation-head { border-color: #353b45; }
+      #${FRAME_ID}[data-theme="dark"] .tf-close { color: #b8c0cc; background: #30353e; }
       @media (max-width: 1050px) { #${FRAME_ID} .tf-shell { padding: 18px 16px 14px; } #${FRAME_ID} .tf-topbar { align-items: flex-start; } #${FRAME_ID} .tf-actions { flex-wrap: wrap; justify-content: flex-end; } #${FRAME_ID} .tf-search { width: 210px; } #${FRAME_ID} .tf-account-chip { max-width: 170px; } #${FRAME_ID} .tf-sync { display: none; } #${FRAME_ID} .tf-notice { right: 16px; } }
+      @media (max-width: 820px) { #${FRAME_ID} .tf-topbar { flex-direction: column; align-items: stretch; gap: 10px; } #${FRAME_ID} .tf-top-left { overflow-x: auto; scrollbar-width: none; } #${FRAME_ID} .tf-actions { width: 100%; justify-content: flex-start; } #${FRAME_ID} .tf-search { width: 100%; flex: 1 1 100%; } #${FRAME_ID} .tf-account { margin-left: auto; } #${FRAME_ID} .tf-account-chip { width: 43px; padding-right: 5px; } #${FRAME_ID} .tf-account-copy { display: none; } #${FRAME_ID} .tf-summary-row { overflow-x: auto; padding-bottom: 3px; } #${FRAME_ID} .tf-board { grid-template-columns: repeat(4, minmax(calc(100% - 12px), 1fr)); } }
+      @media (max-width: 520px) { #${FRAME_ID} .tf-shell { padding: 12px 10px 10px; } #${FRAME_ID} .tf-tabs { min-width: 100%; } #${FRAME_ID} .tf-tabs button { min-width: 0; flex: 1; padding: 0 5px; gap: 4px; font-size: 11px; } #${FRAME_ID} .tf-actions > .tf-secondary { flex: 1 1 auto; } #${FRAME_ID} .tf-summary { min-width: 132px; } #${FRAME_ID} .tf-modal-backdrop { padding: 8px; } #${FRAME_ID} .tf-modal { max-height: calc(100% - 4px); border-radius: 13px; } #${FRAME_ID} .tf-modal-actions { flex-wrap: wrap; } #${FRAME_ID} .tf-modal-actions button { flex: 1 1 auto; } #${FRAME_ID} .tf-notice { top: 118px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 130px); } }
+      @media (pointer: coarse) { #${FRAME_ID} button, #${FRAME_ID} .tf-choice { min-height: 44px; } #${FRAME_ID} .tf-tabs button, #${FRAME_ID} .tf-mini, #${FRAME_ID} .tf-close { min-height: 44px; } }
+      @media (prefers-reduced-motion: reduce) { #${FRAME_ID} *, #${FRAME_ID} *::before, #${FRAME_ID} *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -970,7 +1006,7 @@
       title: item.title,
       priority: normalizePriority(item.priority),
       status: "queued",
-      meta: `${relativeTime(item.createdAt / 1000)} · ${workspaceName(item.cwd)} · ${item.status === "starting" ? "正在创建 Codex 对话" : item.status === "failed" ? `启动失败：${item.lastError || "未知错误"}` : "等待 Codex 自动认领"}`,
+      meta: `${relativeTime(item.createdAt / 1000)} · ${item.workspaceMode === "none" ? "不需要项目" : item.projectName || workspaceName(item.cwd)} · ${item.status === "starting" ? "正在创建 Codex 对话" : item.status === "failed" ? `启动失败：${item.lastError || "未知错误"}` : "等待 Codex 自动认领"}`,
       result: item.prompt,
       error: item.status === "failed",
       updatedAt: item.createdAt / 1000,
@@ -1047,8 +1083,8 @@
   function resultModalHtml(item) {
     if (!item) return "";
     const queued = Boolean(item.queueId);
-    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal tf-result-modal" role="dialog" aria-modal="true">
-      <div class="tf-modal-head"><div><p class="tf-kicker">${escapeHtml(item.kind)}</p><h2>${escapeHtml(item.title)}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
+    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal tf-result-modal" role="dialog" aria-modal="true" aria-labelledby="tf-result-title">
+      <div class="tf-modal-head"><div><p class="tf-kicker">${escapeHtml(item.kind)}</p><h2 id="tf-result-title">${escapeHtml(item.title)}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <div class="tf-modal-body"><strong>${queued ? "已加入待处理队列" : item.status === "done" ? "已确认完成" : item.status === "running" ? "Codex 正在处理" : "处理已结束，等待你验收"}</strong><p><span class="tf-priority ${escapeHtml(item.priority)}">${taskflowIcon("flag")} ${escapeHtml(priorityLabel(item.priority))}</span></p><p>${escapeHtml(item.result)}</p></div>
       <div class="tf-modal-actions">${queued ? `<button class="tf-secondary" data-action="queue-delete" data-id="${escapeHtml(item.queueId)}">移除</button>` : ""}<button class="tf-secondary" data-action="close-modal">关闭</button>${queued ? `<button class="tf-primary" data-action="queue-start" data-id="${escapeHtml(item.queueId)}">立即执行</button>` : `<button class="tf-secondary" data-action="open-thread" data-id="${escapeHtml(item.threadId)}">打开对话</button>`}${item.status === "review" ? `<button class="tf-primary" data-action="mark-done" data-id="${escapeHtml(item.id)}">确认并完成</button>` : ""}</div>
     </section></div>`;
@@ -1056,23 +1092,99 @@
 
   function automationModalHtml(item) {
     if (!item) return "";
-    return `<div class="tf-modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true">
-      <div class="tf-modal-head"><div><p class="tf-kicker">Automation</p><h2>${escapeHtml(item.name || "未命名自动化")}</h2></div><button class="tf-close" data-action="close-modal">${taskflowIcon("close")}</button></div>
+    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-automation-title">
+      <div class="tf-modal-head"><div><p class="tf-kicker">Automation</p><h2 id="tf-automation-title">${escapeHtml(item.name || "未命名自动化")}</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <div class="tf-modal-body"><strong>${escapeHtml(automationSchedule(item))} · 下次 ${escapeHtml(formatDateTime(item.nextRunAt))}</strong><p>${escapeHtml(item.prompt || "暂无可预览内容")}</p></div>
       <div class="tf-modal-actions"><button class="tf-secondary" data-action="close-modal">关闭</button><button class="tf-primary" data-action="open-scheduled">前往计划入口</button></div>
     </section></div>`;
   }
 
+  function requestDeviceWorkspaces() {
+    return new Promise((resolve, reject) => {
+      const bridge = window.electronBridge;
+      if (!bridge || typeof bridge.sendMessageFromView !== "function") {
+        reject(new Error("当前 Codex 版本无法读取项目"));
+        return;
+      }
+      const requestId = `taskflow-workspaces-${crypto.randomUUID()}`;
+      const finish = (callback, value) => {
+        window.clearTimeout(timeout);
+        window.removeEventListener("message", onMessage);
+        callback(value);
+      };
+      const onMessage = (event) => {
+        const message = event.data;
+        if (!message || message.type !== "fetch-response" || message.requestId !== requestId) return;
+        if (!Number.isInteger(message.status) || message.status < 200 || message.status >= 300) {
+          finish(reject, new Error(`项目接口返回 ${message.status || "异常"}`));
+          return;
+        }
+        try {
+          const payload = message.bodyJsonString ? JSON.parse(message.bodyJsonString) : {};
+          finish(resolve, payload?.workspaces && typeof payload.workspaces === "object" ? payload.workspaces : {});
+        } catch (_) {
+          finish(reject, new Error("项目数据格式异常"));
+        }
+      };
+      const timeout = window.setTimeout(
+        () => finish(reject, new Error("读取项目超时")),
+        8_000,
+      );
+      window.addEventListener("message", onMessage);
+      Promise.resolve(bridge.sendMessageFromView({
+        type: "fetch",
+        requestId,
+        method: "GET",
+        url: `${resolveTaskboardUrl().origin}/api/device-workspaces`,
+      })).catch((error) => finish(reject, error));
+    });
+  }
+
+  async function openCreateModal() {
+    inlineState.showCreate = true;
+    inlineState.projectLoading = true;
+    inlineState.projectLoadError = "";
+    inlineState.modalFocusPending = false;
+    renderInlineBoard();
+    try {
+      inlineState.deviceWorkspaces = await requestDeviceWorkspaces();
+    } catch (error) {
+      inlineState.deviceWorkspaces = {};
+      inlineState.projectLoadError = error instanceof Error ? error.message : "无法读取项目";
+    } finally {
+      inlineState.projectLoading = false;
+      inlineState.modalFocusPending = true;
+      renderInlineBoard();
+    }
+  }
+
   function createModalHtml() {
-    const workspaces = [...new Set(inlineState.threads.map((thread) => thread.cwd).filter(Boolean))];
-    const defaultWorkspace = inlineState.hostContext?.workspacePath || workspaces[0] || "";
-    return `<div class="tf-modal-backdrop"><form class="tf-modal" data-form="queue-create">
-      <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2>加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal">${taskflowIcon("close")}</button></div>
+    if (inlineState.projectLoading) {
+      return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
+        <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2 id="tf-create-title">加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
+        <div class="tf-inline-status" role="status" aria-live="polite"><span class="tf-spinner"></span><span>正在读取 Codex 项目…</span></div>
+      </section></div>`;
+    }
+    const projects = (inlineState.hostContext?.projects || []).filter((project) => (
+      typeof inlineState.deviceWorkspaces?.[project.id] === "string"
+      && inlineState.deviceWorkspaces[project.id].trim()
+    ));
+    const defaultProjectId = projects.some((project) => project.id === inlineState.hostContext?.projectId)
+      ? inlineState.hostContext.projectId
+      : projects[0]?.id || "";
+    const hasProjects = projects.length > 0;
+    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><form class="tf-modal" data-form="queue-create" role="dialog" aria-modal="true" aria-labelledby="tf-create-title">
+      <div class="tf-modal-head"><div><p class="tf-kicker">Queue</p><h2 id="tf-create-title">加入待处理</h2></div><button type="button" class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <label class="tf-field">类型<select name="kind"><option value="聊天">聊天</option><option value="任务">任务</option></select></label>
-      <label class="tf-field">名称<input name="title" required placeholder="例如：整理本周产品需求"></label>
+      <label class="tf-field">名称<input name="title" required autofocus placeholder="例如：整理本周产品需求"></label>
       <label class="tf-field">优先级<select name="priority"><option value="high">高优先级</option><option value="normal" selected>普通</option><option value="low">低优先级</option></select></label>
       <label class="tf-field">交给 Codex 的内容<textarea name="prompt" required placeholder="完整写下需要 Codex 执行的事情"></textarea></label>
-      <label class="tf-field">工作目录<input name="cwd" required list="tf-workspaces" value="${escapeHtml(defaultWorkspace)}" placeholder="请选择或输入工作目录"><datalist id="tf-workspaces">${workspaces.map((cwd) => `<option value="${escapeHtml(cwd)}"></option>`).join("")}</datalist></label>
+      <fieldset class="tf-choice-group"><legend>在哪里处理</legend>
+        <label class="tf-choice"><input type="radio" name="workspaceMode" value="project" ${hasProjects ? "checked" : "disabled"}><span class="tf-choice-copy"><strong>在项目中处理</strong><small>使用所选 Codex 项目的文件和上下文</small></span></label>
+        <label class="tf-choice"><input type="radio" name="workspaceMode" value="none" ${hasProjects ? "" : "checked"}><span class="tf-choice-copy"><strong>不需要项目</strong><small>适合翻译、总结、写作等通用任务</small></span></label>
+      </fieldset>
+      <label class="tf-field tf-project-select" ${hasProjects ? "" : "hidden"}>选择项目<select name="projectId" ${hasProjects ? "required" : "disabled"}>${projects.map((project) => `<option value="${escapeHtml(project.id)}" ${project.id === defaultProjectId ? "selected" : ""}>${escapeHtml(project.name)}</option>`).join("")}</select><small>只显示项目名称，不需要选择目录。</small></label>
+      ${inlineState.projectLoadError ? `<div class="tf-modal-body" role="status">项目暂不可用（${escapeHtml(inlineState.projectLoadError)}），仍可选择“不需要项目”。</div>` : ""}
       <div class="tf-modal-body">保存后会停留在“待处理”；到达设置的间隔后，Codex 会创建真实对话并提交这段内容。</div>
       <div class="tf-modal-actions"><button type="button" class="tf-secondary" data-action="close-modal">取消</button><button class="tf-primary" type="submit">加入队列</button></div>
     </form></div>`;
@@ -1082,8 +1194,8 @@
     const next = queueSettings.enabled && queueSettings.nextClaimAt
       ? new Date(queueSettings.nextClaimAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
       : "未计划";
-    return `<div class="tf-modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true">
-      <div class="tf-modal-head"><div><p class="tf-kicker">Taskflow</p><h2>看板配置</h2></div><button class="tf-close" data-action="close-modal">${taskflowIcon("close")}</button></div>
+    return `<div class="tf-modal-backdrop" data-action="modal-backdrop"><section class="tf-modal" role="dialog" aria-modal="true" aria-labelledby="tf-settings-title">
+      <div class="tf-modal-head"><div><p class="tf-kicker">Taskflow</p><h2 id="tf-settings-title">看板配置</h2></div><button class="tf-close" data-action="close-modal" aria-label="关闭">${taskflowIcon("close")}</button></div>
       <div class="tf-setting-row"><div><strong>自动认领待处理</strong><p>按间隔逐个创建真实 Codex 对话；达到同时处理上限后等待。</p></div><button class="tf-switch ${queueSettings.enabled ? "on" : ""}" data-action="toggle-auto" aria-pressed="${queueSettings.enabled}"></button></div>
       <label class="tf-field">认领间隔（分钟）<input id="tf-interval" type="number" min="1" max="1440" value="${queueSettings.intervalMinutes}"><small>当前 ${queueItems.length} 项待处理 · 下次认领：${escapeHtml(next)}</small></label>
       <label class="tf-field">同时处理任务数<input id="tf-concurrency" type="number" min="1" max="10" value="${queueSettings.maxConcurrent}"><small>自动认领最多允许 1–10 个任务同时处于“正在处理”，默认 5。</small></label>
@@ -1145,6 +1257,12 @@
   function renderInlineBoard() {
     if (!frame?.isConnected || frame.dataset.renderMode !== "native") return;
     const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
+    const activeModalControl = frame.querySelector(".tf-modal")?.contains(document.activeElement)
+      ? {
+          name: document.activeElement?.getAttribute?.("name") || "",
+          action: document.activeElement?.getAttribute?.("data-action") || "",
+        }
+      : null;
     pendingScrollExcludedItemId = "";
     const items = inlineItems();
     const retainedItems = items.filter((item) => item.status !== "done"
@@ -1170,36 +1288,56 @@
     const selected = items.find((item) => item.id === inlineState.selectedId);
     const selectedAutomation = inlineState.automations.find((item) => item.id === inlineState.selectedAutomationId);
     const tabs = [["all", "全部", ""], ["chats", "聊天", "chat"], ["tasks", "任务", "task"], ["automations", "自动化", "clock"]]
-      .map(([key, label, icon]) => `<button data-action="view" data-view="${key}" class="${inlineState.view === key ? "active" : ""}">${icon ? taskflowIcon(icon) : ""}${label}</button>`).join("");
-    const summary = inlineState.view === "automations" ? "" : `<div class="tf-summary-row">
+      .map(([key, label, icon]) => `<button role="tab" aria-selected="${inlineState.view === key}" data-action="view" data-view="${key}" class="${inlineState.view === key ? "active" : ""}">${icon ? taskflowIcon(icon) : ""}${label}</button>`).join("");
+    const summary = inlineState.view === "automations" ? "" : `<section class="tf-summary-row" aria-label="状态概览">
       <div class="tf-summary"><span class="tf-summary-icon queued">${taskflowIcon("clock")}</span><div><b>${counts.queued}</b><small>待处理</small></div></div>
       <div class="tf-summary"><span class="tf-summary-icon running">${taskflowIcon("refresh")}</span><div><b>${counts.running}</b><small>正在处理</small></div></div>
       <button class="tf-summary" data-action="focus-review"><span class="tf-summary-icon review">${taskflowIcon("warning")}</span><div><b>${counts.review}</b><small>等待你验收</small></div></button>
       <div class="tf-summary"><span class="tf-summary-icon done">${taskflowIcon("check")}</span><div><b>${counts.done}</b><small>已确认完成</small></div></div>
       <div class="tf-sync ${inlineState.error ? "" : "ok"}">${inlineState.loading ? "正在同步账号数据" : inlineState.error ? "同步失败" : "真实数据已连接"}${inlineState.lastSyncedAt ? ` · ${new Date(inlineState.lastSyncedAt).toLocaleTimeString("zh-CN")}` : ""}</div>
-    </div>`;
-    const board = inlineState.view === "automations" ? automationBoardHtml() : `<div class="tf-board">${statuses.map(([key, title, empty]) => {
+    </section>`;
+    const board = inlineState.view === "automations" ? automationBoardHtml() : `<main class="tf-board" aria-label="任务状态看板">${statuses.map(([key, title, empty]) => {
       const cards = visible.filter((item) => item.status === key);
-      return `<section class="tf-column ${key}" data-status="${key}"><div class="tf-column-head"><span class="tf-dot ${key}"></span><strong>${title}</strong><span class="tf-count">${cards.length}</span></div><div class="tf-card-list">${cards.length ? cards.map(cardHtml).join("") : `<div class="tf-empty">${keyword ? "没有匹配结果" : empty}</div>`}</div>${key === "queued" ? `<button class="tf-add" data-action="show-create">${taskflowIcon("plus")} 加入待处理</button>` : ""}</section>`;
-    }).join("")}</div>`;
-    const noticePanel = inlineState.showNotices ? `<section class="tf-notice"><div class="tf-notice-head"><strong>待验收提醒</strong><button class="tf-mini" data-action="mark-read" ${unread ? "" : "disabled"}>${unread ? "全部已读" : "已全部读"}</button></div><div class="tf-notice-list">${notices.length ? notices.map((item) => `<button class="tf-notice-item" data-action="select-item" data-id="${escapeHtml(item.id)}"><span>“${escapeHtml(item.title)}”已停止运行，等待你验收</span><small>${escapeHtml(relativeTime(item.updatedAt))}</small></button>`).join("") : '<div class="tf-empty">暂无待验收任务</div>'}</div></section>` : "";
+      const headingId = `tf-column-${key}`;
+      return `<section class="tf-column ${key}" data-status="${key}" aria-labelledby="${headingId}"><div class="tf-column-head"><span class="tf-dot ${key}"></span><strong id="${headingId}">${title}</strong><span class="tf-count" aria-label="${cards.length} 项">${cards.length}</span></div><div class="tf-card-list">${cards.length ? cards.map(cardHtml).join("") : `<div class="tf-empty" role="status">${keyword ? "没有匹配结果" : empty}</div>`}</div>${key === "queued" ? `<button class="tf-add" data-action="show-create">${taskflowIcon("plus")} 加入待处理</button>` : ""}</section>`;
+    }).join("")}</main>`;
+    const noticePanel = inlineState.showNotices ? `<section class="tf-notice" aria-label="待验收提醒"><div class="tf-notice-head"><strong>待验收提醒</strong><button class="tf-mini" data-action="mark-read" ${unread ? "" : "disabled"}>${unread ? "全部已读" : "已全部读"}</button></div><div class="tf-notice-list">${notices.length ? notices.map((item) => `<button class="tf-notice-item" data-action="select-item" data-id="${escapeHtml(item.id)}"><span>“${escapeHtml(item.title)}”已停止运行，等待你验收</span><small>${escapeHtml(relativeTime(item.updatedAt))}</small></button>`).join("") : '<div class="tf-empty" role="status">暂无待验收任务</div>'}</div></section>` : "";
     const loadingOverlay = inlineState.refreshing ? `<div class="tf-loading-overlay" role="status" aria-live="polite"><div class="tf-loading-content"><span class="tf-spinner"></span><strong>正在刷新数据</strong><small>正在同步任务、自动化、额度和待处理队列…</small></div></div>` : "";
-    frame.innerHTML = `<div class="tf-shell"><header class="tf-topbar"><div class="tf-top-left">${inlineState.hostContext?.sidebarCollapsed ? `<button class="tf-expand" data-action="expand-sidebar">${taskflowIcon("menu")} 展开侧边栏</button>` : ""}<nav class="tf-tabs" aria-label="内容类型">${tabs}</nav></div><div class="tf-actions"><label class="tf-search">${taskflowIcon("search")}<input data-role="search" value="${escapeHtml(inlineState.query)}" placeholder="${inlineState.view === "automations" ? "搜索自动化" : "搜索任务或聊天"}">${inlineState.query ? `<button data-action="clear-search">${taskflowIcon("close")}</button>` : ""}</label><button class="tf-secondary" data-action="new-thread">${taskflowIcon("plus")} 立即新建</button><button class="tf-secondary tf-refresh-button ${inlineState.refreshing ? "loading" : ""}" data-action="refresh-data" title="刷新任务、自动化、额度和待处理队列" ${inlineState.refreshing ? "disabled" : ""}>${taskflowIcon("refresh")} ${inlineState.refreshing ? "刷新中" : "刷新数据"}</button><button class="tf-icon-button" data-action="toggle-notices" aria-label="通知">${taskflowIcon("bell")}${unread ? `<span class="tf-badge">${Math.min(unread, 99)}</span>` : ""}</button><div class="tf-account"><div class="tf-account-chip" title="${escapeHtml(`${accountName} · ${quota.quota}${quota.reset ? ` · ${quota.reset}` : ""}`)}"><span class="tf-avatar">${escapeHtml(accountName.slice(0, 1).toUpperCase())}</span><span class="tf-account-copy"><small>${escapeHtml(`${quota.plan} · ${quota.quota}`)}</small>${quota.reset ? `<small>${escapeHtml(quota.reset)}</small>` : ""}</span></div><button class="tf-icon-button" data-action="show-settings" aria-label="看板配置">${taskflowIcon("settings")}</button></div></div></header>${summary}${inlineState.error ? `<div class="tf-message error">${taskflowIcon("warning")} ${escapeHtml(inlineState.error)} <button class="tf-mini" data-action="refresh-data">重新连接</button></div>` : inlineState.loading ? `<div class="tf-message">${taskflowIcon("refresh")} 正在读取当前账号的 Codex 任务…</div>` : ""}${board}</div>${noticePanel}${selected ? resultModalHtml(selected) : ""}${selectedAutomation ? automationModalHtml(selectedAutomation) : ""}${inlineState.showCreate ? createModalHtml() : ""}${inlineState.showSettings ? settingsModalHtml() : ""}${loadingOverlay}${inlineState.toast ? `<div class="tf-toast">${taskflowIcon("check")} ${escapeHtml(inlineState.toast)}</div>` : ""}`;
+    frame.innerHTML = `<div class="tf-shell"><header class="tf-topbar"><div class="tf-top-left">${inlineState.hostContext?.sidebarCollapsed ? `<button class="tf-expand" data-action="expand-sidebar">${taskflowIcon("menu")} 展开侧边栏</button>` : ""}<nav class="tf-tabs" role="tablist" aria-label="内容类型">${tabs}</nav></div><div class="tf-actions"><label class="tf-search">${taskflowIcon("search")}<input data-role="search" aria-label="${inlineState.view === "automations" ? "搜索自动化" : "搜索任务或聊天"}" value="${escapeHtml(inlineState.query)}" placeholder="${inlineState.view === "automations" ? "搜索自动化" : "搜索任务或聊天"}">${inlineState.query ? `<button data-action="clear-search" aria-label="清除搜索">${taskflowIcon("close")}</button>` : ""}</label><button class="tf-secondary" data-action="new-thread">${taskflowIcon("plus")} 立即新建</button><button class="tf-secondary tf-refresh-button ${inlineState.refreshing ? "loading" : ""}" data-action="refresh-data" title="刷新任务、自动化、额度和待处理队列" ${inlineState.refreshing ? "disabled" : ""}>${taskflowIcon("refresh")} ${inlineState.refreshing ? "刷新中" : "刷新数据"}</button><button class="tf-icon-button" data-action="toggle-notices" aria-label="通知" aria-expanded="${inlineState.showNotices}">${taskflowIcon("bell")}${unread ? `<span class="tf-badge">${Math.min(unread, 99)}</span>` : ""}</button><div class="tf-account"><div class="tf-account-chip" title="${escapeHtml(`${accountName} · ${quota.quota}${quota.reset ? ` · ${quota.reset}` : ""}`)}"><span class="tf-avatar">${escapeHtml(accountName.slice(0, 1).toUpperCase())}</span><span class="tf-account-copy"><small>${escapeHtml(`${quota.plan} · ${quota.quota}`)}</small>${quota.reset ? `<small>${escapeHtml(quota.reset)}</small>` : ""}</span></div><button class="tf-icon-button" data-action="show-settings" aria-label="看板配置">${taskflowIcon("settings")}</button></div></div></header>${summary}${inlineState.error ? `<div class="tf-message error" role="alert">${taskflowIcon("warning")} ${escapeHtml(inlineState.error)} <button class="tf-mini" data-action="refresh-data">重新连接</button></div>` : inlineState.loading ? `<div class="tf-message" role="status">${taskflowIcon("refresh")} 正在读取当前账号的 Codex 任务…</div>` : ""}${board}</div>${noticePanel}${selected ? resultModalHtml(selected) : ""}${selectedAutomation ? automationModalHtml(selectedAutomation) : ""}${inlineState.showCreate ? createModalHtml() : ""}${inlineState.showSettings ? settingsModalHtml() : ""}${loadingOverlay}${inlineState.toast ? `<div class="tf-toast" role="status" aria-live="polite">${taskflowIcon("check")} ${escapeHtml(inlineState.toast)}</div>` : ""}`;
     restoreInlineScroll(scrollSnapshot);
+    const modal = frame.querySelector('.tf-modal[role="dialog"]');
+    if (modal) {
+      const restoredControl = activeModalControl?.name
+        ? modal.querySelector(`[name="${CSS.escape(activeModalControl.name)}"]`)
+        : activeModalControl?.action
+          ? modal.querySelector(`[data-action="${CSS.escape(activeModalControl.action)}"]`)
+          : null;
+      const defaultFocus = modal.querySelector("[autofocus]")
+        || modal.querySelector("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)");
+      const nextFocus = inlineState.modalFocusPending ? defaultFocus : restoredControl || defaultFocus;
+      if (inlineState.modalFocusPending || document.activeElement === document.body) nextFocus?.focus?.();
+    }
+    inlineState.modalFocusPending = false;
   }
 
   function handleInlineBoardMessage(message) {
     if (!message || typeof message !== "object") return;
     let changed = false;
-    if (message.type === "taskboard:host-context") {
+    if (message.type === "taskboard:theme") {
+      if (frame) frame.dataset.theme = message.theme === "dark" ? "dark" : "light";
+      return;
+    } else if (message.type === "taskboard:host-context") {
       const next = message.payload || null;
       const visibleContext = (value) => JSON.stringify({
         name: value?.user?.name || "",
         workspacePath: value?.workspacePath || "",
+        projectId: value?.projectId || "",
+        projects: value?.projects || [],
         sidebarCollapsed: value?.sidebarCollapsed === true,
       });
       changed = visibleContext(next) !== visibleContext(inlineState.hostContext);
       inlineState.hostContext = next;
+      if (frame) frame.dataset.theme = next?.theme === "dark" ? "dark" : "light";
     } else if (message.type === "taskflow:queue-state") {
       const nextItems = normalizeQueueItems(message.payload?.items || []);
       const nextSettings = normalizeQueueSettings(message.payload?.settings || {});
@@ -1610,13 +1748,17 @@
     const title = typeof payload?.title === "string" ? payload.title.trim() : "";
     const prompt = typeof payload?.prompt === "string" ? payload.prompt.trim() : "";
     const cwd = typeof payload?.cwd === "string" ? payload.cwd.trim() : "";
-    if (!title || !prompt || !cwd) return;
+    const workspaceMode = payload?.workspaceMode === "none" ? "none" : "project";
+    if (!title || !prompt || (workspaceMode === "project" && !cwd)) return;
     queueItems.push({
       id: crypto.randomUUID(),
       kind: payload.kind === "任务" ? "任务" : "聊天",
       title,
       prompt,
       cwd,
+      workspaceMode,
+      projectId: typeof payload?.projectId === "string" ? payload.projectId.trim() : "",
+      projectName: typeof payload?.projectName === "string" ? payload.projectName.trim() : "",
       priority: normalizePriority(payload.priority),
       createdAt: Date.now(),
       status: "queued",
@@ -1678,7 +1820,9 @@
 
       let threadId = item.startedThreadId;
       if (!threadId) {
-        const startResult = await requestCodexAppServer("thread/start", { cwd: item.cwd });
+        const startResult = await requestCodexAppServer("thread/start", {
+          cwd: item.workspaceMode === "none" ? null : item.cwd,
+        });
         threadId = startResult?.thread?.id;
         if (!threadId) throw new Error("Codex 已创建对话，但没有返回对话编号");
         item.startedThreadId = threadId;
@@ -1921,6 +2065,7 @@
     inlineState.showCreate = false;
     inlineState.showSettings = false;
     renderInlineBoard();
+    window.requestAnimationFrame(() => frame?.querySelector('[data-action="show-create"], [data-action="show-settings"]')?.focus?.());
   }
 
   function completeReviewItem(id) {
@@ -1955,14 +2100,16 @@
       showInlineToast("待验收通知已全部标为已读");
     } else if (action === "show-settings") {
       inlineState.showSettings = true;
+      inlineState.modalFocusPending = true;
       renderInlineBoard();
     } else if (action === "show-create") {
-      inlineState.showCreate = true;
-      renderInlineBoard();
+      void openCreateModal();
     } else if (action === "close-modal") closeInlineModal();
+    else if (action === "modal-backdrop" && event.target === target) closeInlineModal();
     else if (action === "select-item") {
       inlineState.selectedId = id;
       inlineState.showNotices = false;
+      inlineState.modalFocusPending = true;
       renderInlineBoard();
     } else if (action === "open-thread") void openThread(id);
     else if (action === "mark-done") {
@@ -1977,6 +2124,7 @@
       showInlineToast("已从待处理队列移除");
     } else if (action === "preview-automation") {
       inlineState.selectedAutomationId = id;
+      inlineState.modalFocusPending = true;
       renderInlineBoard();
     } else if (action === "open-scheduled") openNativeScheduled();
     else if (action === "new-thread") openNewCodexThread();
@@ -2017,19 +2165,62 @@
     input?.setSelectionRange?.(inlineState.query.length, inlineState.query.length);
   }
 
+  function onInlineChange(event) {
+    if (event.target?.name !== "workspaceMode") return;
+    const form = event.target.closest?.('[data-form="queue-create"]');
+    const projectField = form?.querySelector(".tf-project-select");
+    const projectSelect = projectField?.querySelector('select[name="projectId"]');
+    const usesProject = event.target.value === "project";
+    if (projectField) projectField.hidden = !usesProject;
+    if (projectSelect) projectSelect.disabled = !usesProject;
+  }
+
+  function onInlineKeyDown(event) {
+    const modal = frame?.querySelector('.tf-modal[role="dialog"]');
+    if (event.key === "Escape") {
+      if (modal) {
+        event.preventDefault();
+        closeInlineModal();
+      } else if (inlineState.showNotices) {
+        inlineState.showNotices = false;
+        renderInlineBoard();
+      }
+      return;
+    }
+    if (event.key !== "Tab" || !modal) return;
+    const focusable = Array.from(modal.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'))
+      .filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function onInlineSubmit(event) {
     const form = event.target?.closest?.('[data-form="queue-create"]');
     if (!form) return;
     event.preventDefault();
     const data = new FormData(form);
+    const workspaceMode = data.get("workspaceMode") === "none" ? "none" : "project";
+    const projectId = workspaceMode === "project" ? String(data.get("projectId") || "").trim() : "";
+    const project = (inlineState.hostContext?.projects || []).find((candidate) => candidate.id === projectId);
     const payload = {
       kind: data.get("kind") === "任务" ? "任务" : "聊天",
       title: String(data.get("title") || "").trim(),
       priority: normalizePriority(data.get("priority")),
       prompt: String(data.get("prompt") || "").trim(),
-      cwd: String(data.get("cwd") || "").trim(),
+      workspaceMode,
+      projectId,
+      projectName: project?.name || "",
+      cwd: workspaceMode === "project" ? String(inlineState.deviceWorkspaces?.[projectId] || "").trim() : "",
     };
-    if (!payload.title || !payload.prompt || !payload.cwd) return;
+    if (!payload.title || !payload.prompt || (payload.workspaceMode === "project" && !payload.cwd)) return;
     addQueueItem(payload);
     inlineState.showCreate = false;
     showInlineToast("已加入待处理队列");
@@ -2224,6 +2415,8 @@
     nextFrame.setAttribute("aria-label", "任务流看板");
     nextFrame.addEventListener("click", onInlineClick);
     nextFrame.addEventListener("input", onInlineInput);
+    nextFrame.addEventListener("change", onInlineChange);
+    nextFrame.addEventListener("keydown", onInlineKeyDown);
     nextFrame.addEventListener("submit", onInlineSubmit);
     nextFrame.addEventListener("dragstart", onInlineDragStart);
     nextFrame.addEventListener("dragend", onInlineDragEnd);
