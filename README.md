@@ -54,7 +54,7 @@ cd "$HOME/.local/share/codex-taskflow-dashboard"
 1. 检查 Node.js 22.5+，缺失时下载并校验 Node.js 官方运行时；
 2. 安装依赖并构建本地界面；
 3. 安装 `taskctl`；
-4. 将官方 Codex 应用安全保存在 `/Applications/.ChatGPT Official.app`；
+4. 将官方 Codex 应用安全保存在 `/Applications/Codex.app`；
 5. 在 `/Applications/ChatGPT.app` 安装同图标启动器并重新打开 Codex。
 
 安装过程不会修改官方应用包内部文件，也不需要 `sudo`。
@@ -97,7 +97,7 @@ npm run codex:uninstall-launcher
 如果 Codex 无法启动，也可直接打开保存的官方应用：
 
 ```bash
-open "/Applications/.ChatGPT Official.app"
+open "/Applications/Codex.app"
 ```
 
 ## 开发

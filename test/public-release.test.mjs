@@ -55,6 +55,7 @@ test("native board exposes the complete taskflow workflow", () => {
 });
 
 test("launcher is recoverable and has no unpublished dashboard dependency", () => {
+  assert.match(launcher, /\/Applications\/Codex\.app/);
   assert.match(launcher, /\.ChatGPT Official\.app/);
   assert.match(launcher, /io\.github\.dengzi77\.codex-taskflow-dashboard\.launcher/);
   assert.match(launcher, /CODEX_TASKFLOW_DEBUG_PORT/);

@@ -16,7 +16,8 @@ import path from "node:path";
 const scriptPath = fileURLToPath(import.meta.url);
 const projectRoot = path.resolve(path.dirname(scriptPath), "..");
 const launcherApp = "/Applications/ChatGPT.app";
-const officialApp = "/Applications/.ChatGPT Official.app";
+const officialApp = "/Applications/Codex.app";
+const legacyOfficialApp = "/Applications/.ChatGPT Official.app";
 const officialBundleId = "com.openai.codex";
 const launcherBundleId = "io.github.dengzi77.codex-taskflow-dashboard.launcher";
 const compatibleLauncherBundleIds = new Set([
@@ -207,7 +208,16 @@ function registerApplication(appPath) {
   spawnSync(launchServices, ["-f", appPath], { stdio: "ignore" });
 }
 
+async function migrateLegacyOfficialApp() {
+  if (await exists(officialApp)) return;
+  if (readBundleId(legacyOfficialApp) === officialBundleId) {
+    await rename(legacyOfficialApp, officialApp);
+    console.log(`Migrated official Codex app to ${officialApp}`);
+  }
+}
+
 async function install({ launch }) {
+  await migrateLegacyOfficialApp();
   const launcherExists = await exists(launcherApp);
   const officialExists = await exists(officialApp);
   const currentBundleId = launcherExists ? readBundleId(launcherApp) : null;
@@ -246,6 +256,7 @@ async function install({ launch }) {
 }
 
 async function uninstall() {
+  await migrateLegacyOfficialApp();
   if (!compatibleLauncherBundleIds.has(readBundleId(launcherApp))) {
     throw new Error(`Taskboard launcher was not found at ${launcherApp}`);
   }
