@@ -67,6 +67,7 @@
   outline: 0;
   background: transparent;
   color: var(--text-tertiary);
+  transition: background-color var(--ease-standard), color var(--ease-standard), transform var(--ease-fast);
 }
 
 .workflow-tab {
@@ -77,6 +78,11 @@
   border-radius: 11px 11px 0 0;
   font-size: 10px;
   font-weight: 520;
+}
+
+.workflow-tab:active:not(.is-renaming),
+.workflow-tab-add:active {
+  transform: scale(var(--press-scale));
 }
 
 .workflow-tab > span {
@@ -250,31 +256,31 @@
 }
 
 .workflow-node-issue {
-  --node-tone: #6e78df;
+  --node-tone: var(--node-tone-issue);
 }
 
 .workflow-node-capability {
-  --node-tone: #4777d4;
+  --node-tone: var(--node-tone-capability);
 }
 
 .workflow-node-api {
-  --node-tone: #2b8a66;
+  --node-tone: var(--node-tone-api);
 }
 
 .workflow-node-integration {
-  --node-tone: #2f7f9d;
+  --node-tone: var(--node-tone-integration);
 }
 
 .workflow-node-development {
-  --node-tone: #c15f3c;
+  --node-tone: var(--node-tone-development);
 }
 
 .workflow-node-planning {
-  --node-tone: #b7791f;
+  --node-tone: var(--node-tone-planning);
 }
 
 .workflow-node-result {
-  --node-tone: #a75ac4;
+  --node-tone: var(--node-tone-result);
 }
 
 .workflow-step-main {
@@ -419,11 +425,14 @@
   background: transparent;
   color: var(--text-tertiary);
   opacity: 0;
+  transition: opacity var(--ease-standard), background-color var(--ease-standard), color var(--ease-standard);
 }
 
 .workflow-node:hover .workflow-step-menu-trigger,
+.workflow-node:focus-within .workflow-step-menu-trigger,
 .workflow-node.selected .workflow-step-menu-trigger,
 .workflow-plan-container:hover .workflow-step-menu-trigger,
+.workflow-plan-container:focus-within .workflow-step-menu-trigger,
 .workflow-plan-container.selected .workflow-step-menu-trigger,
 .workflow-step-menu-trigger[aria-expanded="true"] {
   opacity: 1;
@@ -587,6 +596,10 @@
 }
 
 .workflow-empty-add {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -600,6 +613,7 @@
   font-size: 10px;
   font-weight: 520;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
+  transform: translate(-50%, -50%);
 }
 
 .workflow-empty-add:hover {
@@ -612,14 +626,6 @@
 .workflow-empty-add svg {
   width: 13px;
   height: 13px;
-}
-
-.workflow-empty-add {
-  position: absolute;
-  z-index: 5;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 
 .workflow-plan-list {
@@ -982,31 +988,31 @@
 }
 
 .workflow-step-picker-mark.tone-issue {
-  --node-tone: #6e78df;
+  --node-tone: var(--node-tone-issue);
 }
 
 .workflow-step-picker-mark.tone-capability {
-  --node-tone: #4777d4;
+  --node-tone: var(--node-tone-capability);
 }
 
 .workflow-step-picker-mark.tone-api {
-  --node-tone: #2b8a66;
+  --node-tone: var(--node-tone-api);
 }
 
 .workflow-step-picker-mark.tone-integration {
-  --node-tone: #2f7f9d;
+  --node-tone: var(--node-tone-integration);
 }
 
 .workflow-step-picker-mark.tone-development {
-  --node-tone: #c15f3c;
+  --node-tone: var(--node-tone-development);
 }
 
 .workflow-step-picker-mark.tone-planning {
-  --node-tone: #b7791f;
+  --node-tone: var(--node-tone-planning);
 }
 
 .workflow-step-picker-mark.tone-result {
-  --node-tone: #a75ac4;
+  --node-tone: var(--node-tone-result);
 }
 
 .workflow-step-picker-copy {
@@ -1235,7 +1241,7 @@
 
 .workflow-config-section input:disabled,
 .workflow-config-section select:disabled {
-  opacity: 0.48;
+  opacity: var(--disabled-opacity);
 }
 
 .workflow-action-row {
