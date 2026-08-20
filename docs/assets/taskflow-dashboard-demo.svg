@@ -1,0 +1,180 @@
+<svg width="1600" height="920" viewBox="0 0 1600 920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#21304A" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="page" x1="0" y1="0" x2="1600" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFD"/>
+      <stop offset="1" stop-color="#F2F5FA"/>
+    </linearGradient>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .title { fill: #182235; font-weight: 700; }
+      .body { fill: #253044; }
+      .muted { fill: #8490A5; }
+      .small { font-size: 14px; }
+      .medium { font-size: 17px; }
+      .label { font-size: 15px; font-weight: 650; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="920" rx="26" fill="url(#page)"/>
+  <rect x="1" y="1" width="1598" height="918" rx="25" stroke="#DCE3EE" stroke-width="2"/>
+
+  <!-- top navigation -->
+  <g filter="url(#shadow)">
+    <rect x="42" y="32" width="478" height="66" rx="18" fill="white" stroke="#DCE3EE"/>
+  </g>
+  <rect x="50" y="40" width="96" height="50" rx="14" fill="#E9EDFF"/>
+  <text x="98" y="71" text-anchor="middle" class="title medium">全部</text>
+  <circle cx="171" cy="65" r="8" stroke="#738099" stroke-width="2"/>
+  <path d="M166 75C169 72 173 72 176 75" stroke="#738099" stroke-width="2" stroke-linecap="round"/>
+  <text x="193" y="71" class="body medium">聊天</text>
+  <rect x="263" y="56" width="16" height="20" rx="3" stroke="#738099" stroke-width="2"/>
+  <path d="M267 62H275M267 67H275" stroke="#738099" stroke-width="2" stroke-linecap="round"/>
+  <text x="290" y="71" class="body medium">任务</text>
+  <circle cx="381" cy="66" r="10" stroke="#738099" stroke-width="2"/>
+  <path d="M381 60V66L386 69" stroke="#738099" stroke-width="2" stroke-linecap="round"/>
+  <text x="402" y="71" class="body medium">自动化</text>
+
+  <rect x="552" y="32" width="338" height="66" rx="18" fill="white" stroke="#DCE3EE"/>
+  <circle cx="580" cy="65" r="10" stroke="#8A96AA" stroke-width="2"/>
+  <path d="M587 72L594 79" stroke="#8A96AA" stroke-width="2" stroke-linecap="round"/>
+  <text x="610" y="72" class="muted medium">搜索任务或聊天</text>
+
+  <rect x="908" y="32" width="142" height="66" rx="18" fill="#4F6BED"/>
+  <path d="M935 65H951M943 57V73" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="966" y="71" fill="white" font-size="16" font-weight="650">立即新建</text>
+
+  <rect x="1066" y="32" width="142" height="66" rx="18" fill="white" stroke="#DCE3EE"/>
+  <path d="M1093 59A10 10 0 1 1 1090 72M1093 59V67H1101" stroke="#64728A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1114" y="71" class="body" font-size="16" font-weight="650">刷新数据</text>
+
+  <rect x="1224" y="32" width="66" height="66" rx="18" fill="white" stroke="#DCE3EE"/>
+  <path d="M1249 69V62A8 8 0 0 1 1265 62V69L1269 74H1245L1249 69Z" stroke="#64728A" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="1270" cy="44" r="10" fill="#F05D62"/>
+  <text x="1270" y="49" text-anchor="middle" fill="white" font-size="12" font-weight="700">2</text>
+
+  <rect x="1306" y="32" width="250" height="66" rx="18" fill="white" stroke="#DCE3EE"/>
+  <rect x="1318" y="42" width="46" height="46" rx="14" fill="#21304A"/>
+  <text x="1341" y="71" text-anchor="middle" fill="white" font-size="18" font-weight="700">D</text>
+  <text x="1378" y="61" class="body small" font-weight="650">演示账号 · 可用 77%</text>
+  <text x="1378" y="81" class="muted" font-size="12">周一 10:00 重置</text>
+  <circle cx="1529" cy="65" r="10" stroke="#738099" stroke-width="2"/>
+  <circle cx="1529" cy="65" r="3" fill="#738099"/>
+
+  <!-- demo data banner -->
+  <rect x="42" y="120" width="1514" height="48" rx="14" fill="#EEF1FF" stroke="#D8DEFF"/>
+  <circle cx="67" cy="144" r="9" fill="#5B6FF5"/>
+  <path d="M63 144L66 147L72 140" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="88" y="150" fill="#4359D8" font-size="15" font-weight="650">演示数据</text>
+  <text x="172" y="150" class="muted small">以下任务、项目、账号、额度和时间均为虚构内容，仅用于展示界面效果</text>
+
+  <!-- summary -->
+  <g filter="url(#shadow)">
+    <rect x="42" y="190" width="270" height="90" rx="18" fill="white" stroke="#E0E6EF"/>
+    <rect x="330" y="190" width="270" height="90" rx="18" fill="white" stroke="#E0E6EF"/>
+    <rect x="618" y="190" width="270" height="90" rx="18" fill="white" stroke="#E0E6EF"/>
+    <rect x="906" y="190" width="270" height="90" rx="18" fill="white" stroke="#E0E6EF"/>
+  </g>
+  <rect x="62" y="208" width="54" height="54" rx="15" fill="#EDF1F6"/>
+  <circle cx="89" cy="235" r="11" stroke="#8490A5" stroke-width="2.5"/>
+  <path d="M89 228V235L84 239" stroke="#8490A5" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="132" y="231" class="title" font-size="26">3</text><text x="132" y="253" class="muted small">待处理</text>
+
+  <rect x="350" y="208" width="54" height="54" rx="15" fill="#E9EDFF"/>
+  <path d="M388 230A12 12 0 1 0 389 240M388 230V238H396" stroke="#536FF2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="420" y="231" class="title" font-size="26">1</text><text x="420" y="253" class="muted small">正在处理</text>
+
+  <rect x="638" y="208" width="54" height="54" rx="15" fill="#FFF1D6"/>
+  <path d="M665 221L678 246H652L665 221Z" stroke="#D69219" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M665 230V237M665 242H665.1" stroke="#D69219" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="708" y="231" class="title" font-size="26">2</text><text x="708" y="253" class="muted small">等待你验收</text>
+
+  <rect x="926" y="208" width="54" height="54" rx="15" fill="#E2F5EC"/>
+  <path d="M940 235L949 244L967 225" stroke="#249C6B" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="996" y="231" class="title" font-size="26">1</text><text x="996" y="253" class="muted small">已确认完成</text>
+  <text x="1556" y="242" text-anchor="end" fill="#2FA473" font-size="14" font-weight="650">● 数据已连接</text>
+  <text x="1556" y="263" text-anchor="end" class="muted" font-size="12">最近同步：10:24:18</text>
+
+  <!-- columns -->
+  <rect x="42" y="306" width="360" height="570" rx="20" fill="#F0F3F7" stroke="#DCE3EC"/>
+  <rect x="42" y="306" width="360" height="5" rx="2.5" fill="#95A2B5"/>
+  <rect x="418" y="306" width="360" height="570" rx="20" fill="#EEF1FF" stroke="#CED6FF"/>
+  <rect x="418" y="306" width="360" height="5" rx="2.5" fill="#536FF2"/>
+  <rect x="794" y="306" width="360" height="570" rx="20" fill="#FFF7E8" stroke="#F2D89F"/>
+  <rect x="794" y="306" width="360" height="5" rx="2.5" fill="#E4A12B"/>
+  <rect x="1170" y="306" width="386" height="570" rx="20" fill="#ECF8F2" stroke="#BFE4D1"/>
+  <rect x="1170" y="306" width="386" height="5" rx="2.5" fill="#2CA673"/>
+
+  <!-- column headings -->
+  <circle cx="70" cy="346" r="6" fill="#95A2B5"/><text x="88" y="352" class="title medium">待处理</text><rect x="165" y="331" width="34" height="30" rx="10" fill="#E1E6ED"/><text x="182" y="352" text-anchor="middle" class="muted small" font-weight="700">3</text>
+  <circle cx="446" cy="346" r="6" fill="#536FF2"/><text x="464" y="352" class="title medium">正在处理</text><rect x="557" y="331" width="34" height="30" rx="10" fill="#DDE3FF"/><text x="574" y="352" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="700">1</text>
+  <circle cx="822" cy="346" r="6" fill="#E4A12B"/><text x="840" y="352" class="title medium">待验收</text><rect x="917" y="331" width="34" height="30" rx="10" fill="#F7E6BE"/><text x="934" y="352" text-anchor="middle" fill="#B9770A" font-size="14" font-weight="700">2</text>
+  <circle cx="1198" cy="346" r="6" fill="#2CA673"/><text x="1216" y="352" class="title medium">已完成</text><rect x="1293" y="331" width="34" height="30" rx="10" fill="#D3EDDF"/><text x="1310" y="352" text-anchor="middle" fill="#27895F" font-size="14" font-weight="700">1</text>
+
+  <!-- queued cards -->
+  <g filter="url(#shadow)"><rect x="58" y="380" width="328" height="160" rx="16" fill="white" stroke="#DCE3EC"/></g>
+  <text x="78" y="412" fill="#536FF2" class="label">▣ 任务</text><text x="354" y="412" text-anchor="end" class="muted medium">☰</text>
+  <text x="78" y="449" class="title" font-size="19">整理本周产品需求</text>
+  <text x="78" y="480" class="muted small">今天 14:30 · 演示工作区</text>
+  <rect x="78" y="502" width="36" height="26" rx="9" fill="#21304A"/><text x="96" y="520" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="240" y="496" width="126" height="34" rx="10" fill="#F2F4F8"/><text x="303" y="518" text-anchor="middle" class="body small" font-weight="650">▶ 立即执行</text>
+
+  <g filter="url(#shadow)"><rect x="58" y="556" width="328" height="160" rx="16" fill="white" stroke="#DCE3EC"/></g>
+  <text x="78" y="588" fill="#8A5BDC" class="label">▤ 聊天</text><text x="354" y="588" text-anchor="end" class="muted medium">☰</text>
+  <text x="78" y="625" class="title" font-size="19">规划下周迭代范围</text>
+  <text x="78" y="656" class="muted small">5 分钟前 · 演示项目</text>
+  <rect x="78" y="678" width="36" height="26" rx="9" fill="#21304A"/><text x="96" y="696" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="240" y="672" width="126" height="34" rx="10" fill="#F2F4F8"/><text x="303" y="694" text-anchor="middle" class="body small" font-weight="650">▶ 立即执行</text>
+  <rect x="58" y="814" width="328" height="46" rx="13" fill="white" stroke="#CDD5E1"/><text x="222" y="843" text-anchor="middle" fill="#536FF2" font-size="15" font-weight="650">＋ 加入待处理</text>
+
+  <!-- running card -->
+  <g filter="url(#shadow)"><rect x="434" y="380" width="328" height="222" rx="16" fill="white" stroke="#CAD3FF"/></g>
+  <text x="454" y="412" fill="#8A5BDC" class="label">▤ 聊天</text><text x="730" y="412" text-anchor="end" class="muted medium">◉</text>
+  <text x="454" y="451" class="title" font-size="19">生成竞品更新摘要</text>
+  <text x="454" y="482" class="muted small">刚刚 · 市场研究</text>
+  <rect x="454" y="510" width="288" height="7" rx="3.5" fill="#E5E9F2"/>
+  <rect x="454" y="510" width="186" height="7" rx="3.5" fill="#5C70F2"/>
+  <rect x="454" y="546" width="36" height="30" rx="9" fill="#21304A"/><text x="472" y="566" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="574" y="542" width="168" height="38" rx="11" fill="#E9EDFF"/><text x="658" y="566" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">◷ Codex 正在处理</text>
+
+  <rect x="434" y="625" width="328" height="202" rx="16" fill="#F7F8FC" stroke="#D5DBEA" stroke-dasharray="6 6"/>
+  <circle cx="598" cy="701" r="24" fill="#E8ECF7"/><text x="598" y="708" text-anchor="middle" fill="#95A2B5" font-size="22">✓</text>
+  <text x="598" y="748" text-anchor="middle" class="muted small">同一时间仅执行一项任务</text>
+
+  <!-- review cards -->
+  <g filter="url(#shadow)"><rect x="810" y="380" width="328" height="188" rx="16" fill="white" stroke="#F0D18D"/></g>
+  <text x="830" y="412" fill="#536FF2" class="label">▣ 任务</text><text x="1106" y="412" text-anchor="end" class="muted medium">☰</text>
+  <text x="830" y="451" class="title" font-size="19">检查支付页交互稿</text>
+  <text x="830" y="482" class="muted small">12 分钟前 · 体验优化</text>
+  <rect x="830" y="514" width="36" height="30" rx="9" fill="#21304A"/><text x="848" y="534" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="924" y="508" width="96" height="38" rx="11" fill="#FFF0CD"/><text x="972" y="532" text-anchor="middle" fill="#BB7600" font-size="14" font-weight="650">◉ 快速验收</text>
+  <rect x="1028" y="508" width="90" height="38" rx="11" fill="#EAEEFF"/><text x="1073" y="532" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">→ 对话</text>
+
+  <g filter="url(#shadow)"><rect x="810" y="584" width="328" height="188" rx="16" fill="white" stroke="#F0D18D"/></g>
+  <text x="830" y="616" fill="#8A5BDC" class="label">▤ 聊天</text><text x="1106" y="616" text-anchor="end" class="muted medium">☰</text>
+  <text x="830" y="655" class="title" font-size="19">汇总用户访谈结论</text>
+  <text x="830" y="686" class="muted small">34 分钟前 · 用户研究</text>
+  <rect x="830" y="718" width="36" height="30" rx="9" fill="#21304A"/><text x="848" y="738" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="924" y="712" width="96" height="38" rx="11" fill="#FFF0CD"/><text x="972" y="736" text-anchor="middle" fill="#BB7600" font-size="14" font-weight="650">◉ 快速验收</text>
+  <rect x="1028" y="712" width="90" height="38" rx="11" fill="#EAEEFF"/><text x="1073" y="736" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">→ 对话</text>
+
+  <!-- done card and automation preview -->
+  <g filter="url(#shadow)"><rect x="1186" y="380" width="354" height="180" rx="16" fill="white" stroke="#BFE3D1"/></g>
+  <text x="1206" y="412" fill="#536FF2" class="label">▣ 任务</text><text x="1508" y="412" text-anchor="end" fill="#2CA673" class="medium">✓</text>
+  <text x="1206" y="451" class="title" font-size="19">归档已验收版本</text>
+  <text x="1206" y="482" class="muted small">今天 09:40 · 发布流程</text>
+  <rect x="1206" y="512" width="36" height="30" rx="9" fill="#21304A"/><text x="1224" y="532" text-anchor="middle" fill="white" font-size="12" font-weight="700">AI</text>
+  <rect x="1382" y="507" width="138" height="38" rx="11" fill="#E2F5EC"/><text x="1451" y="531" text-anchor="middle" fill="#27895F" font-size="14" font-weight="650">已确认完成</text>
+
+  <rect x="1186" y="584" width="354" height="222" rx="16" fill="white" stroke="#CFE0F5"/>
+  <rect x="1206" y="606" width="84" height="28" rx="9" fill="#EEF1FF"/><text x="1248" y="625" text-anchor="middle" fill="#536FF2" font-size="13" font-weight="650">自动化</text>
+  <text x="1206" y="663" class="title" font-size="19">每日生成产品日报</text>
+  <text x="1206" y="694" class="muted small">每天 09:00 · 当前已启用</text>
+  <path d="M1206 724H1518" stroke="#E5E9F1"/>
+  <text x="1206" y="754" class="body small">下次运行：明天 09:00</text>
+  <rect x="1404" y="730" width="114" height="42" rx="12" fill="#EAEEFF"/><text x="1461" y="756" text-anchor="middle" fill="#536FF2" font-size="14" font-weight="650">预览计划 →</text>
+
+  <text x="800" y="903" text-anchor="middle" class="muted" font-size="12">Codex Taskflow Dashboard · UI preview with fictional data</text>
+</svg>

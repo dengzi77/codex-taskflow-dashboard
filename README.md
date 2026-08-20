@@ -10,6 +10,12 @@
 
 Codex Taskflow Dashboard 把当前 Codex 账号中的任务、聊天和计划任务整理成四列看板：**待处理、正在处理、待验收、已完成**。它直接嵌入 Codex 桌面端，不需要切换到独立网页。
 
+<p align="center">
+  <img src="./docs/assets/taskflow-dashboard-demo.svg" alt="Codex Taskflow Dashboard 界面效果示意图（全部为虚构演示数据）" width="100%">
+</p>
+
+<p align="center"><sub>界面效果示意图；任务、项目、账号、额度和时间均为虚构数据。</sub></p>
+
 > [!IMPORTANT]
 > 固定侧边栏入口目前仅支持 macOS Codex 桌面端。这是社区扩展，通过本机回环调试端口注入界面，并非 OpenAI 官方插件 API；Codex 桌面端升级后可能需要更新本项目。
 
