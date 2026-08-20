@@ -1361,11 +1361,21 @@
     if (!frame?.isConnected || frame.dataset.renderMode !== "native") return;
     const createForm = frame.querySelector('[data-form="queue-create"]');
     captureCreateDraft(createForm);
+    if (inlineState.showCreate && createForm) return;
     const scrollSnapshot = captureInlineScroll(pendingScrollExcludedItemId);
     const activeModalControl = frame.querySelector(".tf-modal")?.contains(document.activeElement)
       ? {
           name: document.activeElement?.getAttribute?.("name") || "",
           action: document.activeElement?.getAttribute?.("data-action") || "",
+          selectionStart: Number.isInteger(document.activeElement?.selectionStart)
+            ? document.activeElement.selectionStart
+            : null,
+          selectionEnd: Number.isInteger(document.activeElement?.selectionEnd)
+            ? document.activeElement.selectionEnd
+            : null,
+          selectionDirection: document.activeElement?.selectionDirection || "none",
+          scrollTop: Number(document.activeElement?.scrollTop) || 0,
+          scrollLeft: Number(document.activeElement?.scrollLeft) || 0,
         }
       : null;
     pendingScrollExcludedItemId = "";
@@ -1426,7 +1436,23 @@
       const defaultFocus = modal.querySelector("[autofocus]")
         || modal.querySelector("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)");
       const nextFocus = inlineState.modalFocusPending ? defaultFocus : restoredControl || defaultFocus;
-      if (inlineState.modalFocusPending || document.activeElement === document.body) nextFocus?.focus?.();
+      if (inlineState.modalFocusPending || activeModalControl || document.activeElement === document.body) {
+        nextFocus?.focus?.();
+      }
+      if (
+        restoredControl
+        && activeModalControl?.selectionStart !== null
+        && activeModalControl?.selectionEnd !== null
+        && typeof restoredControl.setSelectionRange === "function"
+      ) {
+        restoredControl.setSelectionRange(
+          activeModalControl.selectionStart,
+          activeModalControl.selectionEnd,
+          activeModalControl.selectionDirection,
+        );
+        restoredControl.scrollTop = activeModalControl.scrollTop;
+        restoredControl.scrollLeft = activeModalControl.scrollLeft;
+      }
     }
     inlineState.modalFocusPending = false;
   }
@@ -2311,6 +2337,13 @@
     }));
   }
 
+  function onInlineWindowKeyUp(event) {
+    if (event.key !== "Enter") return;
+    const prompt = event.target?.closest?.('[data-form="queue-create"] textarea[name="prompt"]');
+    if (!prompt || !frame?.contains(prompt)) return;
+    event.stopImmediatePropagation();
+  }
+
   function onInlineKeyDown(event) {
     const modal = frame?.querySelector('.tf-modal[role="dialog"]');
     if (event.key === "Escape") {
@@ -2897,6 +2930,7 @@
     document.removeEventListener("DOMContentLoaded", mount);
     document.removeEventListener("click", onDocumentClick, true);
     window.removeEventListener("keydown", onInlineWindowKeyDown, true);
+    window.removeEventListener("keyup", onInlineWindowKeyUp, true);
     window.removeEventListener("message", onFrameMessage);
     window.removeEventListener("popstate", onNativeRouteChange);
     window.removeEventListener("hashchange", onNativeRouteChange);
@@ -2932,6 +2966,7 @@
 
   window.addEventListener("message", onFrameMessage);
   window.addEventListener("keydown", onInlineWindowKeyDown, true);
+  window.addEventListener("keyup", onInlineWindowKeyUp, true);
   window.addEventListener("popstate", onNativeRouteChange);
   window.addEventListener("hashchange", onNativeRouteChange);
   window.addEventListener("resize", scheduleRefresh);
