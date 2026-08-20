@@ -11,6 +11,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import path from "node:path";
 
 const scriptPath = fileURLToPath(import.meta.url);
@@ -27,6 +28,10 @@ const compatibleLauncherBundleIds = new Set([
 const launcherExecutable = "taskflow-dashboard-launcher";
 const debuggingPort = parseDebuggingPort(process.env.CODEX_TASKFLOW_DEBUG_PORT);
 const launchServices = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+const plistBuddy = "/usr/libexec/PlistBuddy";
+const dockPlist = path.join(homedir(), "Library", "Preferences", "com.apple.dock.plist");
+const legacyDockUrl = "file:///Applications/.ChatGPT%20Official.app/";
+const officialDockUrl = "file:///Applications/Codex.app/";
 
 function parseArgs(argv) {
   const options = { uninstall: false, launch: false };
@@ -208,6 +213,42 @@ function registerApplication(appPath) {
   spawnSync(launchServices, ["-f", appPath], { stdio: "ignore" });
 }
 
+function runPlistBuddy(command) {
+  return spawnSync(plistBuddy, ["-c", command, dockPlist], { encoding: "utf8" });
+}
+
+async function repairLegacyDockItem() {
+  if (!(await exists(dockPlist))) return;
+
+  let changed = false;
+  for (let index = 0; index < 100; index += 1) {
+    const base = `:persistent-apps:${index}:tile-data`;
+    const bundleResult = runPlistBuddy(`Print ${base}:bundle-identifier`);
+    if (bundleResult.status !== 0) break;
+    if (bundleResult.stdout.trim() !== officialBundleId) continue;
+
+    const url = runPlistBuddy(`Print ${base}:file-data:_CFURLString`).stdout.trim();
+    const label = runPlistBuddy(`Print ${base}:file-label`).stdout.trim();
+    if (url !== legacyDockUrl && label !== ".ChatGPT Official") continue;
+
+    const updates = [
+      `Set ${base}:file-label Codex`,
+      `Set ${base}:file-data:_CFURLString ${officialDockUrl}`,
+    ];
+    if (updates.some((command) => runPlistBuddy(command).status !== 0)) {
+      console.warn("Could not update the legacy Codex Dock item");
+      continue;
+    }
+    runPlistBuddy(`Delete ${base}:book`);
+    changed = true;
+  }
+
+  if (changed) {
+    spawnSync("/usr/bin/killall", ["Dock"], { stdio: "ignore" });
+    console.log("Updated the Codex Dock item to use its normal name");
+  }
+}
+
 async function migrateLegacyOfficialApp() {
   if (await exists(officialApp)) return;
   if (readBundleId(legacyOfficialApp) === officialBundleId) {
@@ -248,7 +289,9 @@ async function install({ launch }) {
     path.join(officialApp, "Contents", "Resources", "app.icns"),
     path.join(resources, "app.icns"),
   );
+  registerApplication(officialApp);
   registerApplication(launcherApp);
+  await repairLegacyDockItem();
 
   console.log(`Installed Taskboard launcher at ${launcherApp}`);
   console.log(`Official Codex app is preserved at ${officialApp}`);
